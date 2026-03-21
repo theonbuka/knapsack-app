@@ -837,6 +837,7 @@ function Assets({ mode: _mode = 'all', wallets = [], isDark, color, liveRates, p
   const { isPremium } = useAuth();
   const _navigate = useNavigate();
   const [editor, setEditor] = useState<{ type: 'asset' | 'cc' | 'loan'; walletIndex?: number } | null>(null);
+  const [topFilter, setTopFilter] = useState<'all' | 'assets' | 'debts'>('all');
   const cur = normalizeCurrencySymbol(prefs?.currency);
   const defaultCurrency = getPreferredInputCurrency(prefs?.currency);
 
@@ -918,6 +919,32 @@ function Assets({ mode: _mode = 'all', wallets = [], isDark, color, liveRates, p
         />
 
         <div className="space-y-6">
+          <SectionCard isDark={isDark} padding="sm" className={cardBg}>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setTopFilter('all')}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider border transition-all ${topFilter === 'all' ? `${color.bg} text-white border-transparent` : isDark ? 'border-white/10 text-white/45' : 'border-slate-200 text-slate-500'}`}
+              >
+                Tümü
+              </button>
+              <button
+                type="button"
+                onClick={() => setTopFilter('assets')}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider border transition-all ${topFilter === 'assets' ? 'bg-emerald-500 text-white border-transparent' : isDark ? 'border-white/10 text-white/45' : 'border-slate-200 text-slate-500'}`}
+              >
+                Varlıklar
+              </button>
+              <button
+                type="button"
+                onClick={() => setTopFilter('debts')}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider border transition-all ${topFilter === 'debts' ? 'bg-rose-500 text-white border-transparent' : isDark ? 'border-white/10 text-white/45' : 'border-slate-200 text-slate-500'}`}
+              >
+                Borçlar
+              </button>
+            </div>
+          </SectionCard>
+
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <MetricCard
               isDark={isDark}
@@ -971,6 +998,7 @@ function Assets({ mode: _mode = 'all', wallets = [], isDark, color, liveRates, p
             )}
           </div>
 
+          {topFilter !== 'debts' && (
           <SectionCard isDark={isDark} padding="lg" className={cardBg}>
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -997,7 +1025,9 @@ function Assets({ mode: _mode = 'all', wallets = [], isDark, color, liveRates, p
           )}
         </div>
           </SectionCard>
+          )}
 
+          {topFilter !== 'assets' && (
             <SectionCard isDark={isDark} padding="lg" className={cardBg}>
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -1026,6 +1056,7 @@ function Assets({ mode: _mode = 'all', wallets = [], isDark, color, liveRates, p
             )}
           </div>
             </SectionCard>
+          )}
         </div>
 
       <AnimatePresence>
