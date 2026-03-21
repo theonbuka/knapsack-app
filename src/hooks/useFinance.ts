@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { customDB, DEFAULT_CATS } from '../utils/constants';
-import { getActiveCloudSyncAccountId } from '../utils/accountStorage';
+import { getActiveCloudSyncAccountId, getAnonymousScopedDataKey } from '../utils/accountStorage';
 import type { Category, ExpenseItem, Transaction, UserPrefs, Wallet } from '../types';
 import { getSupabaseAuthClient } from '../utils/supabaseAuth';
+import { SecureStorage } from '../utils/secureStorage';
 
 const FALLBACK_RATES = { USD: 33.2, EUR: 35.9, GOLD: 3185 };
 const DEFAULT_PREFS: UserPrefs = { currency: '₺', themeColor: 'indigo', savingsGoal: 0 };
@@ -42,16 +43,6 @@ function hasMeaningfulFinanceData(payload: FinanceData): boolean {
     || payload.wallets.length > 0
     || payload.expenses.length > 0
     || payload.cats.length > 0;
-}
-
-async function backfillCloudFromLocal(accountId: string, local: FinanceData): Promise<void> {
-  await Promise.all([
-    ...local.trans.map(item => upsertEntityRow(TRANSACTIONS_TABLE, accountId, item.id, item)),
-    ...local.wallets.map(item => upsertEntityRow(WALLETS_TABLE, accountId, item.id, item)),
-    ...local.expenses.map(item => upsertEntityRow(EXPENSES_TABLE, accountId, item.id, item)),
-    upsertSingletonPayload(PREFS_TABLE, accountId, local.prefs),
-    upsertSingletonPayload(CATS_TABLE, accountId, local.cats),
-  ]);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -103,6 +94,56 @@ function normalizeCats(raw: unknown): Category[] {
   }
 
   return raw as Category[];
+}
+
+/** Merge two arrays by id, keeping primary items for conflicts and appending secondary-only items. */
+function mergeById<T extends { id: string }>(primary: T[], secondary: T[]): T[] {
+  if (!secondary.length) return primary;
+  const ids = new Set(primary.map(item => item.id));
+  const unique = secondary.filter(item => item.id && !ids.has(item.id));
+  return unique.length ? [...primary, ...unique] : primary;
+}
+
+/**
+ * Read finance data that was stored under the anonymous scope (before user logged in).
+ * Returns null if nothing meaningful is there.
+ */
+function readAnonymousFinanceData(): FinanceData | null {
+  const readAnon = <T>(baseKey: string, def: T): T => {
+    const key = getAnonymousScopedDataKey(baseKey);
+    const raw = localStorage.getItem(key);
+    if (!raw) return def;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      try {
+        return (SecureStorage.getSecure<T>(key)) ?? def;
+      } catch {
+        return def;
+      }
+    }
+  };
+
+  const trans = readAnon<Transaction[]>('knapsack_t', []);
+  const expenses = readAnon<ExpenseItem[]>('knapsack_exp', []);
+  const walletsRaw = readAnon<Wallet[]>('knapsack_w', []);
+
+  if (!trans.length && !expenses.length && !walletsRaw.length) return null;
+
+  return {
+    trans,
+    wallets: walletsRaw.map((w, i) => ensureWalletId(w, `anon_wallet_${i}`)),
+    expenses,
+    prefs: DEFAULT_PREFS,
+    cats: DEFAULT_CATS as Category[],
+  };
+}
+
+/** Remove anonymous-scope finance keys from localStorage after merging into user scope. */
+function clearAnonymousFinanceScope(): void {
+  ['knapsack_t', 'knapsack_w', 'knapsack_exp', 'knapsack_p', 'knapsack_cats'].forEach(baseKey => {
+    localStorage.removeItem(getAnonymousScopedDataKey(baseKey));
+  });
 }
 
 function readLocalFinanceData(): FinanceData {
@@ -248,7 +289,24 @@ export function useFinance() {
     const accountId = getActiveCloudSyncAccountId();
     if (!accountId) {
       const local = readLocalFinanceData();
-      commitLocalData(local);
+      // Even in offline mode, rescue any data added pre-login (anonymous scope).
+      const anonData = readAnonymousFinanceData();
+      if (anonData) {
+        const merged: FinanceData = {
+          trans: mergeById(local.trans, anonData.trans)
+            .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime()),
+          wallets: local.wallets.length > 0
+            ? mergeById(local.wallets, anonData.wallets)
+            : anonData.wallets,
+          expenses: mergeById(local.expenses, anonData.expenses),
+          prefs: local.prefs,
+          cats: local.cats,
+        };
+        clearAnonymousFinanceScope();
+        commitLocalData(merged);
+      } else {
+        commitLocalData(local);
+      }
       setSyncStatus('offline');
       setLastSyncError(null);
       setLoading(false);
@@ -282,32 +340,65 @@ export function useFinance() {
       };
 
       const remoteHasData = hasMeaningfulFinanceData(next);
-      const localHasData = hasMeaningfulFinanceData(localSnapshot);
 
-      if (!remoteHasData && localHasData) {
-        commitLocalData(localSnapshot);
-        setLastSyncAt(Date.now());
-        setLastSyncError(null);
-        setSyncStatus('ok');
+      // Also read any data added while the user was logged-out (anonymous scope).
+      const anonData = readAnonymousFinanceData();
 
-        void retryAsync(
-          () => backfillCloudFromLocal(accountId, localSnapshot),
-          CLOUD_WRITE_RETRY_COUNT,
-          CLOUD_WRITE_RETRY_DELAY_MS,
-        ).catch(error => {
-          const message = error instanceof Error ? error.message : 'Bulut geri yukleme basarisiz oldu';
-          setLastSyncError(`ilk-esitleme: ${message}`);
-          setSyncStatus('error');
-          console.error('Cloud backfill failed:', error);
-        });
+      // ── Merge Strategy ──────────────────────────────────────────────────────
+      // Never lose data: merge remote + local + anonymous by record ID so that
+      // records added on this device before login or while offline are preserved.
+      // Remote wins for prefs/cats (intentionally managed); arrays are unioned.
+      // ────────────────────────────────────────────────────────────────────────
+      const localTrans = [...localSnapshot.trans, ...(anonData?.trans ?? [])];
+      const localExpenses = [...localSnapshot.expenses, ...(anonData?.expenses ?? [])];
+      const localWallets = [...localSnapshot.wallets, ...(anonData?.wallets ?? [])];
 
-        return;
+      const mergedTrans = mergeById(next.trans, localTrans)
+        .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+      const mergedExpenses = mergeById(next.expenses, localExpenses);
+      const mergedWallets = next.wallets.length > 0
+        ? mergeById(next.wallets, localWallets)
+        : localWallets;
+
+      const final: FinanceData = {
+        trans: mergedTrans,
+        wallets: mergedWallets,
+        expenses: mergedExpenses,
+        prefs: remoteHasData ? next.prefs : normalizePrefs(localSnapshot.prefs),
+        cats: remoteHasData ? next.cats : normalizeCats(localSnapshot.cats),
+      };
+
+      // Clear anonymous scope — data is now merged into the user scope.
+      if (anonData) {
+        clearAnonymousFinanceScope();
       }
 
-      commitLocalData(next);
+      commitLocalData(final);
       setLastSyncAt(Date.now());
       setLastSyncError(null);
       setSyncStatus('ok');
+
+      // Upload any records that exist locally/anonymously but are missing from cloud.
+      const remoteTxIds = new Set(next.trans.map(t => t.id));
+      const remoteExpIds = new Set(next.expenses.map(e => e.id));
+      const remoteWalletIds = new Set(next.wallets.map(w => w.id));
+      const localOnlyTrans = final.trans.filter(t => !remoteTxIds.has(t.id));
+      const localOnlyExpenses = final.expenses.filter(e => !remoteExpIds.has(e.id));
+      const localOnlyWallets = final.wallets.filter(w => !remoteWalletIds.has(w.id));
+
+      if (localOnlyTrans.length || localOnlyExpenses.length || localOnlyWallets.length) {
+        void retryAsync(
+          () => Promise.all([
+            ...localOnlyTrans.map(t => upsertEntityRow(TRANSACTIONS_TABLE, accountId, t.id, t)),
+            ...localOnlyExpenses.map(e => upsertEntityRow(EXPENSES_TABLE, accountId, e.id, e)),
+            ...localOnlyWallets.map(w => upsertEntityRow(WALLETS_TABLE, accountId, w.id, w)),
+          ]).then(() => undefined),
+          CLOUD_WRITE_RETRY_COUNT,
+          CLOUD_WRITE_RETRY_DELAY_MS,
+        ).catch(err => {
+          console.error('Cloud backfill of local-only records failed:', err);
+        });
+      }
     } catch (err) {
       console.error('Remote finance sync failed:', err);
       const local = readLocalFinanceData();

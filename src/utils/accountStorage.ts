@@ -89,6 +89,11 @@ export function getScopedDataKey(baseKey: string, storageId?: string): string {
   return `${USER_PREFIX}:${resolvedStorageId}:${baseKey}`;
 }
 
+/** Always returns the anonymous-scope key regardless of which user is active. */
+export function getAnonymousScopedDataKey(baseKey: string): string {
+  return `${USER_PREFIX}:anonymous:${baseKey}`;
+}
+
 export function getAllScopedDataKeys(storageId: string): string[] {
   if (!storageId) return [];
   return ACCOUNT_SCOPED_KEYS.map(
@@ -109,7 +114,7 @@ export function migrateLegacyDataToUser(storageId: string): void {
     if (localStorage.getItem(destinationKey) !== null) return;
 
     const legacyRaw = localStorage.getItem(baseKey);
-    const anonymousKey = getScopedDataKey(baseKey, '');
+    const anonymousKey = getAnonymousScopedDataKey(baseKey);
     const anonymousRaw = localStorage.getItem(anonymousKey);
     const sourceRaw = legacyRaw ?? anonymousRaw;
 

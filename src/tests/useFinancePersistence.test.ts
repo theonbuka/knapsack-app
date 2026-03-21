@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearActiveCloudSyncAccountId,
   clearActiveUserStorageId,
+  getAnonymousScopedDataKey,
   setActiveCloudSyncAccountId,
   setActiveUserStorageId,
 } from '../utils/accountStorage';
@@ -106,5 +107,25 @@ describe('useFinance persistence regressions', () => {
     await waitFor(() => {
       expect(result.current.data.trans[0]?.title).toBe('Optimistik kayıt');
     });
+  });
+
+  it('merges anonymous-scope transactions into user scope on sync when Supabase is offline', async () => {
+    // Simulate: user added a transaction while NOT logged in (anonymous scope)
+    const anonKey = getAnonymousScopedDataKey('knapsack_t');
+    localStorage.setItem(anonKey, JSON.stringify([makeTransaction('anon-tx-1', 'Giriş öncesi kayıt')]));
+
+    // Now user logs in – set user scope (no existing user data)
+    setActiveUserStorageId('uid:merged-user');
+    setActiveCloudSyncAccountId('');
+    getSupabaseAuthClientMock.mockReturnValue(null);
+
+    const { result } = renderHook(() => useFinance());
+
+    await waitFor(() => {
+      expect(result.current.data.trans.some(t => t.title === 'Giriş öncesi kayıt')).toBe(true);
+    });
+
+    // Anonymous scope must be cleared after merge
+    expect(localStorage.getItem(anonKey)).toBeNull();
   });
 });

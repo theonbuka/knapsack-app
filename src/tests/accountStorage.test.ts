@@ -3,6 +3,7 @@ import {
   clearActiveCloudSyncAccountId,
   clearActiveUserStorageId,
   getActiveCloudSyncAccountId,
+  getAnonymousScopedDataKey,
   getAuthStorageId,
   getCloudSyncAccountId,
   getScopedDataKey,
@@ -37,8 +38,8 @@ describe('accountStorage helpers', () => {
 
   it('migrates anonymous scoped data into user scope on first authenticated session', () => {
     const targetStorageId = 'uid:test-user-1';
-    const sourceAnonymousTxKey = getScopedDataKey('knapsack_t', '');
-    const sourceAnonymousPrefsKey = getScopedDataKey('knapsack_p', '');
+    const sourceAnonymousTxKey = getAnonymousScopedDataKey('knapsack_t');
+    const sourceAnonymousPrefsKey = getAnonymousScopedDataKey('knapsack_p');
     const destinationTxKey = getScopedDataKey('knapsack_t', targetStorageId);
     const destinationPrefsKey = getScopedDataKey('knapsack_p', targetStorageId);
 
