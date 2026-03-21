@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Payonar</string>
+    <string name="title_activity_main">Payonar</string>
+    <string name="package_name">com.theonbuka.knapsack</string>
+    <string name="custom_url_scheme">com.theonbuka.knapsack</string>
+</resources>

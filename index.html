@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Payonar</title>
+
+    <!--
+      Brand Font: Epilogue — 300/400/500/600/700/800/900
+      One family, every weight. Warm geometric grotesque.
+      Tabular numbers via font-feature-settings in CSS, no mono needed.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <script>
+      (function() {
+        var saved = localStorage.getItem('knapsack_theme');
+        var isDark = saved !== null ? JSON.parse(saved) : true;
+        var root = document.documentElement;
+        root.classList.toggle('dark', isDark);
+        root.style.backgroundColor = isDark ? '#06060a' : '#f2f1ed';
+        root.style.colorScheme     = isDark ? 'dark'    : 'light';
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

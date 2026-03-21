@@ -1,0 +1,269 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+@import "tailwindcss";
+
+/* Tailwind v4: override built-in dark variant to use .dark class */
+@variant dark (&:where(.dark, .dark *));
+
+/* ─── Design Tokens ────────────────────────────────────── */
+:root {
+  --brand:    #6366f1;
+  --gold:     #d4a853;
+  --income:   #34d399;
+  --expense:  #f87171;
+  --pack-bg:  #0f172a;
+  --pack-surface: #1e293b;
+  /* color-scheme is set dynamically via JS to match app theme */
+}
+
+/* ─── Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-feature-settings: 'ss01' 1, 'cv01' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  line-height: 1.6;
+  @apply leading-relaxed;
+}
+
+/* ─── Typography System ────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  @apply font-bold leading-tight -tracking-[0.02em];
+}
+
+h1 { @apply text-5xl sm:text-6xl font-bold -tracking-[0.02em] leading-[1.1]; }
+h2 { @apply text-4xl sm:text-5xl font-bold -tracking-[0.015em] leading-[1.15]; }
+h3 { @apply text-3xl sm:text-4xl font-semibold -tracking-[0.01em] leading-[1.2]; }
+h4 { @apply text-2xl sm:text-3xl font-semibold leading-[1.25]; }
+h5 { @apply text-xl sm:text-2xl font-semibold leading-[1.3]; }
+h6 { @apply text-lg font-semibold leading-[1.35]; }
+
+p, li { @apply leading-relaxed; }
+
+.font-display {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+}
+
+.font-meta,
+.meta-label,
+.eyebrow-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.font-body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.text-sm  { @apply text-sm leading-relaxed; }
+.text-xs  { @apply text-xs leading-snug; }
+.text-base { @apply text-base leading-relaxed; }
+.text-lg { @apply text-lg leading-relaxed; }
+
+/* ─── Semantic Typography ────────────────────────────────– */
+.label { @apply text-[10px] font-semibold uppercase tracking-widest; }
+.caption { @apply text-xs; }
+.body { @apply text-base; }
+.lead { @apply text-lg font-medium; }
+
+/* ─── Tabular numbers utility ───────────────────────────
+   Applied to any element that displays financial figures.
+   Same font, tabular alignment — no jarring font switch.
+*/
+.font-num,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+
+.pack-grid-shell {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--pack-bg);
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+  background-size: 18px 18px;
+}
+
+.pack-grid-shell-light {
+  background-color: #f8fafc;
+  background-image: radial-gradient(circle at 1px 1px, rgba(203, 213, 225, 0.55) 1px, transparent 0);
+  background-size: 18px 18px;
+}
+
+.pack-grid-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0.5px, transparent 0.5px),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.12) 0.5px, transparent 0.5px);
+  background-size: 7px 7px, 11px 11px;
+}
+
+.pack-grid-shell-light::after {
+  opacity: 0.08;
+  background-image:
+    linear-gradient(135deg, rgba(226, 232, 240, 0.7) 0.5px, transparent 0.5px),
+    linear-gradient(45deg, rgba(226, 232, 240, 0.55) 0.5px, transparent 0.5px);
+}
+
+/* ─── Ambient blob keyframes (GPU only, no JS) ──────────── */
+@keyframes blob1 {
+  0%, 100% { transform: translate(0, 0); }
+  50%       { transform: translate(60px, 30px); }
+}
+@keyframes blob2 {
+  0%, 100% { transform: translate(0, 0); }
+  50%       { transform: translate(-40px, 60px); }
+}
+.ambient-blob1 { animation: blob1 22s ease-in-out infinite; will-change: transform; }
+.ambient-blob2 { animation: blob2 16s ease-in-out infinite 3s; will-change: transform; }
+
+/* ─── Floating Dock ───────────────────────────────────── */
+@keyframes nav-gold-spin {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes nav-grain-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(-1.5%, 1%, 0); }
+  50% { transform: translate3d(1.25%, -1.25%, 0); }
+  75% { transform: translate3d(1.5%, 1.25%, 0); }
+}
+
+.floating-nav-shell {
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(26px);
+  box-shadow: 0 28px 80px rgba(2, 6, 23, 0.34);
+}
+
+.floating-nav-ambient {
+  pointer-events: none;
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -16px;
+  height: 72px;
+  border-radius: 999px;
+  filter: blur(28px);
+  opacity: 0.75;
+}
+
+.floating-nav-grain {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.11) 0.6px, transparent 0.9px),
+    radial-gradient(rgba(255, 255, 255, 0.05) 0.45px, transparent 0.75px);
+  background-position: 0 0, 3px 3px;
+  background-size: 8px 8px, 11px 11px;
+  opacity: 0.08;
+  animation: nav-grain-drift 12s steps(6) infinite;
+}
+
+.nav-ring-indicator {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 18px;
+}
+
+.nav-ring-indicator__glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 22px;
+  background: rgba(99, 102, 241, 0.26);
+  filter: blur(18px);
+}
+
+.nav-ring-indicator__clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.nav-ring-indicator__spin {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  border-radius: 999px;
+  background:
+    conic-gradient(
+      from 0deg,
+      #312e81 0%,
+      #4338ca 10%,
+      #6366f1 20%,
+      #a5b4fc 28%,
+      #f8fafc 34%,
+      #67e8f9 42%,
+      #6366f1 50%,
+      #312e81 58%,
+      #4338ca 68%,
+      #6366f1 78%,
+      #a5b4fc 86%,
+      #f8fafc 92%,
+      #312e81 100%
+    );
+  animation: nav-gold-spin 4.5s linear infinite;
+}
+
+.nav-ring-indicator__plate {
+  position: absolute;
+  inset: 2px;
+  border-radius: 16px;
+  background: var(--toolbar-plate, rgba(10, 13, 20, 0.82));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ─── Ticker marquee ──────────────────────────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track { animation: marquee 25s linear infinite; will-change: transform; }
+
+/* ─── Grain texture overlay ─────────────────────────────
+   Removed mix-blend-mode overlay (forces compositing layer).
+   Replaced with subtle noise on mobile for performance.
+*/
+
+/* ─── Selection ─────────────────────────────────────────  */
+::selection { background-color: rgba(99, 102, 241, 0.25); color: inherit; }
+
+/* ─── Scrollbar ─────────────────────────────────────────  */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.45); }
+
+/* ─── Number input — hide spinners ─────────────────────  */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { -moz-appearance: textfield; }
+
+/* ─── Reduced motion ────────────────────────────────────  */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

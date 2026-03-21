@@ -1,0 +1,80 @@
+{
+  "name": "payonar-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "packageManager": "npm@10.8.2",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "web:deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-sync.ps1 -DeployWeb",
+    "lint": "eslint .",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "preview": "vite preview",
+    "backup": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/backup.ps1",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:run": "npm run build && npx cap run android",
+    "android:bundle": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/android-release.ps1 -Task bundleRelease",
+    "android:assemble": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/android-release.ps1 -Task assembleRelease",
+    "android:aab": "npm run android:sync && npm run android:bundle",
+    "android:apk": "npm run android:sync && npm run android:assemble",
+    "release:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-sync.ps1 -DeployWeb -SyncAndroid",
+    "release:apk": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-sync.ps1 -DeployWeb -SyncAndroid -AssembleApk"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/browser": "^8.0.2",
+    "@capacitor/core": "^8.2.0",
+    "@supabase/supabase-js": "^2.98.0",
+    "@tailwindcss/vite": "^4.2.1",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^1.3.1",
+    "crypto-js": "^4.2.0",
+    "framer-motion": "^11.0.0",
+    "google-auth-library": "^10.6.2",
+    "lucide-react": "^0.400.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^6.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.2.0",
+    "@eslint/js": "^9.39.1",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^15.0.0",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/coverage-v8": "^1.1.1",
+    "@vitest/ui": "^1.1.1",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "jsdom": "^23.0.1",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vite": "^6.0.0",
+    "vitest": "^1.1.1"
+  },
+  "overrides": {
+    "vite": "^6.0.0"
+  },
+  "volta": {
+    "node": "20.19.0",
+    "npm": "10.8.2"
+  }
+}
