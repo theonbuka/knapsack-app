@@ -5,6 +5,8 @@ import {
   getActiveCloudSyncAccountId,
   getAuthStorageId,
   getCloudSyncAccountId,
+  getScopedDataKey,
+  migrateLegacyDataToUser,
   setActiveCloudSyncAccountId,
 } from '../utils/accountStorage';
 
@@ -31,5 +33,23 @@ describe('accountStorage helpers', () => {
 
     clearActiveCloudSyncAccountId();
     expect(getActiveCloudSyncAccountId()).toBe('');
+  });
+
+  it('migrates anonymous scoped data into user scope on first authenticated session', () => {
+    const targetStorageId = 'uid:test-user-1';
+    const sourceAnonymousTxKey = getScopedDataKey('knapsack_t', '');
+    const sourceAnonymousPrefsKey = getScopedDataKey('knapsack_p', '');
+    const destinationTxKey = getScopedDataKey('knapsack_t', targetStorageId);
+    const destinationPrefsKey = getScopedDataKey('knapsack_p', targetStorageId);
+
+    localStorage.setItem(sourceAnonymousTxKey, JSON.stringify([{ id: 'tx_1', amount: 10 }]));
+    localStorage.setItem(sourceAnonymousPrefsKey, JSON.stringify({ currency: '₺', themeColor: 'indigo', savingsGoal: 0 }));
+
+    migrateLegacyDataToUser(targetStorageId);
+
+    expect(localStorage.getItem(destinationTxKey)).toBe(JSON.stringify([{ id: 'tx_1', amount: 10 }]));
+    expect(localStorage.getItem(destinationPrefsKey)).toBe(JSON.stringify({ currency: '₺', themeColor: 'indigo', savingsGoal: 0 }));
+    expect(localStorage.getItem(sourceAnonymousTxKey)).toBeNull();
+    expect(localStorage.getItem(sourceAnonymousPrefsKey)).toBeNull();
   });
 });

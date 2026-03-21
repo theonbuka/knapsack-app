@@ -4,6 +4,7 @@ const ACTIVE_USER_KEY = 'knapsack_active_user';
 const ACTIVE_CLOUD_ACCOUNT_KEY = 'knapsack_active_cloud_account';
 const USER_PREFIX = 'knapsack_user';
 const SYNC_META_PREFIX = 'knapsack_sync_meta';
+const ACCOUNT_SCOPED_KEYS = ['knapsack_w', 'knapsack_t', 'knapsack_exp', 'knapsack_p', 'knapsack_cats'] as const;
 
 function cleanSegment(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9@._-]/g, '_').slice(0, 96);
@@ -79,7 +80,7 @@ export function clearLocalSyncStamp(storageId: string): void {
 }
 
 export function isAccountScopedDataKey(baseKey: string): boolean {
-  return ['knapsack_w', 'knapsack_t', 'knapsack_exp', 'knapsack_p', 'knapsack_cats'].includes(baseKey);
+  return ACCOUNT_SCOPED_KEYS.includes(baseKey as (typeof ACCOUNT_SCOPED_KEYS)[number]);
 }
 
 export function getScopedDataKey(baseKey: string, storageId?: string): string {
@@ -90,7 +91,7 @@ export function getScopedDataKey(baseKey: string, storageId?: string): string {
 
 export function getAllScopedDataKeys(storageId: string): string[] {
   if (!storageId) return [];
-  return ['knapsack_w', 'knapsack_t', 'knapsack_exp', 'knapsack_p', 'knapsack_cats'].map(
+  return ACCOUNT_SCOPED_KEYS.map(
     key => `${USER_PREFIX}:${storageId}:${key}`
   );
 }
@@ -98,15 +99,30 @@ export function getAllScopedDataKeys(storageId: string): string[] {
 export function migrateLegacyDataToUser(storageId: string): void {
   if (!storageId) return;
 
-  const scopedPrefsKey = getScopedDataKey('knapsack_p', storageId);
-  const hasScopedData = localStorage.getItem(scopedPrefsKey);
-  if (hasScopedData) return;
+  const hasAnyUserScopedData = getAllScopedDataKeys(storageId)
+    .some(key => localStorage.getItem(key) !== null);
+  if (hasAnyUserScopedData) return;
 
-  const legacyKeys = ['knapsack_w', 'knapsack_t', 'knapsack_exp', 'knapsack_p', 'knapsack_cats'];
-  legacyKeys.forEach(key => {
-    const legacy = localStorage.getItem(key);
-    if (!legacy) return;
-    localStorage.setItem(getScopedDataKey(key, storageId), legacy);
-    localStorage.removeItem(key);
+  // First-login rescue: move anonymous-scoped data into the authenticated scope.
+  ACCOUNT_SCOPED_KEYS.forEach(baseKey => {
+    const destinationKey = getScopedDataKey(baseKey, storageId);
+    if (localStorage.getItem(destinationKey) !== null) return;
+
+    const legacyRaw = localStorage.getItem(baseKey);
+    const anonymousKey = getScopedDataKey(baseKey, '');
+    const anonymousRaw = localStorage.getItem(anonymousKey);
+    const sourceRaw = legacyRaw ?? anonymousRaw;
+
+    if (sourceRaw === null) return;
+
+    localStorage.setItem(destinationKey, sourceRaw);
+
+    if (legacyRaw !== null) {
+      localStorage.removeItem(baseKey);
+    }
+
+    if (anonymousRaw !== null) {
+      localStorage.removeItem(anonymousKey);
+    }
   });
 }
