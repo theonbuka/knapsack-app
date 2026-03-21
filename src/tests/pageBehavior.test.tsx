@@ -134,7 +134,7 @@ describe('page behaviors', () => {
     expect(screen.getByText('En Yoğun Gün')).toBeInTheDocument();
   });
 
-  it('hides debt management from basic asset screens', () => {
+  it('shows debt actions in unified finance module for basic plan', () => {
     render(
       <MemoryRouter future={routerFuture}>
         <Assets
@@ -153,8 +153,8 @@ describe('page behaviors', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByRole('button', { name: /Kart \/ KMH/i })).not.toBeInTheDocument();
-    expect(screen.getByText('Kart, KMH ve kredi takibi premium planda')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Kart \/ KMH/i })).toBeInTheDocument();
+    expect(screen.getByText('Kredi, Kart ve Taksitler')).toBeInTheDocument();
   });
 
   it('shows debt actions for premium asset screens', () => {
@@ -179,6 +179,6 @@ describe('page behaviors', () => {
     );
 
     expect(screen.getByRole('button', { name: /Kart \/ KMH/i })).toBeInTheDocument();
-    expect(screen.getByText('Borç ve Kartlarım')).toBeInTheDocument();
+    expect(screen.getByText('Kredi, Kart ve Taksitler')).toBeInTheDocument();
   });
 });

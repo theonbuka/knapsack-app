@@ -2,7 +2,7 @@ import React, { useState, useLayoutEffect, useEffect, lazy, Suspense, useMemo, u
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence, useAnimationControls } from 'framer-motion';
 import {
-  Home as HomeIcon, List, CreditCard, Receipt, Calculator, Settings as SettingsIcon,
+  Home as HomeIcon, List, CreditCard, Receipt, Settings as SettingsIcon,
 } from 'lucide-react';
 import { useFinance } from './hooks/useFinance';
 import { themeColors } from './utils/constants';
@@ -127,9 +127,8 @@ function App() {
     return [
       { to: '/', icon: <HomeIcon size={18} strokeWidth={1.5} />, label: 'Ana Sayfa' },
       { to: '/daily-expenses', icon: <List size={18} strokeWidth={1.5} />, label: 'Günlük Harcamalar' },
-      { to: '/credit-cards', icon: <CreditCard size={18} strokeWidth={1.5} />, label: 'Kredi Kartları' },
+      { to: '/credit-cards', icon: <CreditCard size={18} strokeWidth={1.5} />, label: 'Finans Hesapları' },
       { to: '/fixed-expenses', icon: <Receipt size={18} strokeWidth={1.5} />, label: 'Sabit Giderler' },
-      { to: '/loans', icon: <Calculator size={18} strokeWidth={1.5} />, label: 'Kredi ve Taksitler' },
       { to: '/settings', icon: <SettingsIcon size={18} strokeWidth={1.5} />, label: 'Ayarlar' },
     ];
   }, []);
@@ -320,9 +319,9 @@ function App() {
               <Route path="/landing" element={isAuthenticated ? <Navigate to="/" replace /> : <Landing />} />
               <Route path="/" element={<AuthGuard><Home transactions={data.trans} wallets={data.wallets} expenses={data.expenses} isDark={isDark} prefs={data.prefs} color={activeColor} liveRates={liveRates} cats={cats} /></AuthGuard>} />
               <Route path="/daily-expenses" element={<AuthGuard><Transactions transactions={data.trans} isDark={isDark} color={activeColor} prefs={data.prefs} liveRates={liveRates} cats={cats} wallets={data.wallets} updateTransaction={updateTransaction} removeTransaction={removeTransaction} /></AuthGuard>} />
-              <Route path="/credit-cards" element={<AuthGuard><Assets mode="credit-cards" wallets={data.wallets} isDark={isDark} color={activeColor} liveRates={liveRates} prefs={data.prefs} addWallet={addWallet} updateWallet={updateWallet} removeWallet={removeWallet} /></AuthGuard>} />
+              <Route path="/credit-cards" element={<AuthGuard><Assets wallets={data.wallets} isDark={isDark} color={activeColor} liveRates={liveRates} prefs={data.prefs} addWallet={addWallet} updateWallet={updateWallet} removeWallet={removeWallet} /></AuthGuard>} />
               <Route path="/fixed-expenses" element={<AuthGuard><Expenses expenses={data.expenses} isDark={isDark} color={activeColor} prefs={data.prefs} liveRates={liveRates} addExpense={addExpense} removeExpense={removeExpense} toggleExpensePaid={toggleExpensePaid} updateExpense={updateExpense} fabTrigger={expenseFabTrigger} /></AuthGuard>} />
-              <Route path="/loans" element={<AuthGuard><Assets mode="loans" wallets={data.wallets} isDark={isDark} color={activeColor} liveRates={liveRates} prefs={data.prefs} addWallet={addWallet} updateWallet={updateWallet} removeWallet={removeWallet} /></AuthGuard>} />
+              <Route path="/loans" element={<Navigate to="/credit-cards" replace />} />
               <Route path="/transactions" element={<Navigate to="/daily-expenses" replace />} />
               <Route path="/assets" element={<Navigate to="/credit-cards" replace />} />
               <Route path="/expenses" element={<Navigate to="/fixed-expenses" replace />} />

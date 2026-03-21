@@ -30,6 +30,8 @@ interface LoanFormState {
   isDebt: boolean;
   months: string;
   interestRate: string;
+  installmentAmount: string;
+  dueDay: number | string;
   paidMonths: number | string;
 }
 
@@ -111,28 +113,11 @@ function calcPMT(principal: number, monthlyRatePct: number, months: number) {
   return principal * (r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
 }
 
-const ASSET_TYPES = ['Nakit', 'Banka', 'Dijital', 'Yatırım'];
-const BASIC_ASSET_TYPES = ['Nakit', 'Banka'];
+const ASSET_TYPES = ['Vadesiz Hesap', 'Vadeli Hesap', 'Nakit', 'Altın Hesabı', 'Dolar Hesabı', 'Euro Hesabı', 'Yatırım'];
 const CREDIT_TYPES = ['Kredi Kartı', 'KMH', 'Kredi Kartı + KMH'];
 const LOAN_TYPES = ['Taksitli Kredi', 'Kredi / Borç', 'Taksit'];
 const ASSET_CURRENCY_TYPES = ['₺', 'USD', 'EUR', 'GOLD'];
 const ENTRY_CURRENCY_TYPES = ['₺', 'USD', 'EUR'];
-
-function isBasicPlanAsset(wallet: WalletType) {
-  const descriptor = `${wallet.name || ''} ${wallet.type || ''}`.toLocaleLowerCase('tr-TR');
-
-  return (
-    wallet.type === 'Nakit'
-    || wallet.type === 'Banka'
-    || wallet.iconType === 'USD'
-    || wallet.iconType === 'EUR'
-    || wallet.iconType === 'GOLD'
-    || descriptor.includes('vadesiz')
-    || descriptor.includes('dolar')
-    || descriptor.includes('euro')
-    || descriptor.includes('altın')
-  );
-}
 
 function createAssetForm(defaultCurrency = '₺'): WalletType {
   return { name: '', balance: '', type: 'Nakit', iconType: defaultCurrency, isDebt: false };
@@ -160,6 +145,8 @@ function createLoanForm(defaultCurrency = '₺'): WalletType {
     isDebt: true,
     months: '',
     interestRate: '',
+    installmentAmount: '',
+    dueDay: 1,
     paidMonths: 0,
   };
 }
@@ -314,13 +301,17 @@ function WalletCard({ wallet, globalIdx, isDark, color: _color, liveRates, displ
   const showDisplayEquivalent = wallet.iconType === 'GOLD' || normalizeCurrencySymbol(wallet.iconType) !== displayCurrency;
 
   const monthlyPmt = isLoan && wallet.months && wallet.interestRate != null
-    ? calcPMT(val, parseFloat(String(wallet.interestRate)), parseInt(String(wallet.months), 10))
+    ? (parseFloat(String(wallet.installmentAmount || 0)) > 0
+      ? parseFloat(String(wallet.installmentAmount || 0))
+      : calcPMT(val, parseFloat(String(wallet.interestRate)), parseInt(String(wallet.months), 10)))
     : 0;
 
   const totalCost = monthlyPmt * parseInt(String(wallet.months || 0), 10);
   const totalInterest = totalCost - val;
-
-  const remaining = isLoan ? parseInt(String(wallet.months || 0), 10) - parseInt(String(wallet.paidMonths || 0), 10) : 0;
+  const totalInstallments = parseInt(String(wallet.months || 0), 10);
+  const paidInstallments = parseInt(String(wallet.paidMonths || 0), 10);
+  const remaining = isLoan ? Math.max(0, totalInstallments - paidInstallments) : 0;
+  const loanProgressPct = totalInstallments > 0 ? Math.min(100, (paidInstallments / totalInstallments) * 100) : 0;
 
   return (
     <motion.div layout whileHover={{ y: -4 }} className={`rounded-[2.5rem] border relative group overflow-hidden ${isDark ? 'bg-slate-900/72 border-white/10 shadow-pack-card backdrop-blur-xl' : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
@@ -422,6 +413,17 @@ function WalletCard({ wallet, globalIdx, isDark, color: _color, liveRates, displ
               <p className={`text-sm font-black ${txt}`}>{remaining} taksit</p>
               <p className={`text-[10px] opacity-40 ${txt}`}>Kalan plan</p>
             </div>
+            <div className="col-span-2 mt-2">
+              <div className="flex justify-between text-xs mb-1">
+                <span className={`opacity-40 font-black uppercase tracking-wider ${txt}`}>Ödeme İlerlemesi</span>
+                <span className="font-black text-rose-400">%{Math.round(loanProgressPct)}</span>
+              </div>
+              <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                <motion.div initial={{ width: 0 }}
+                  animate={{ width: `${loanProgressPct}%` }}
+                  className="h-full rounded-full bg-rose-500"/>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -443,6 +445,8 @@ function WalletCard({ wallet, globalIdx, isDark, color: _color, liveRates, displ
               <>
                 <Row label="Faiz Oranı (aylık)" val={`%${wallet.interestRate}`} txt={txt}/>
                 <Row label="Toplam Taksit" val={`${wallet.months} ay`} txt={txt}/>
+                <Row label="Ödeme Günü" val={wallet.dueDay ? `Her ay ${wallet.dueDay}. günü` : '-'} txt={txt}/>
+                <Row label="Ödenen Taksit" val={`${paidInstallments} ay`} txt={txt}/>
                 <Row label="Kalan Taksit" val={`${remaining} ay`} txt={txt}/>
                 <Row label="Aylık Taksit" val={formatWalletAmount(monthlyPmt, wallet.iconType, 2)} txt={txt} highlight="text-rose-400"/>
                 <Row label="Toplam Ödenecek" val={formatWalletAmount(totalCost, wallet.iconType)} txt={txt}/>
@@ -476,6 +480,8 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
     isDebt: true,
     months: String(initialWallet.months || ''),
     interestRate: String(initialWallet.interestRate || ''),
+    installmentAmount: String(initialWallet.installmentAmount || ''),
+    dueDay: initialWallet.dueDay || 1,
     paidMonths: initialWallet.paidMonths || 0,
   } : createLoanForm(defaultCurrency));
   const set = <K extends keyof LoanFormState>(k: K, v: LoanFormState[K]) => setForm(p => ({ ...p, [k]: v }));
@@ -484,10 +490,13 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
   const monthlyRate = parseFloat(String(form.interestRate || 0)) || 0;
   const months = parseInt(String(form.months || 0), 10) || 0;
   const principal = parseFloat(String(form.balance || 0)) || 0;
-  const pmt = calcPMT(principal, monthlyRate, months);
+  const manualInstallment = parseFloat(String(form.installmentAmount || 0)) || 0;
+  const pmt = manualInstallment > 0 ? manualInstallment : calcPMT(principal, monthlyRate, months);
   const totalCost = pmt * months;
   const totalInt = totalCost - principal;
   const annualEff = monthlyRate > 0 ? (Math.pow(1 + monthlyRate / 100, 12) - 1) * 100 : 0;
+  const paidInstallments = parseInt(String(form.paidMonths || 0), 10) || 0;
+  const progressPct = months > 0 ? Math.min(100, (paidInstallments / months) * 100) : 0;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -504,7 +513,7 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
             <button onClick={onClose} className="opacity-40 hover:opacity-100"><X size={20} className={txt}/></button>
           </div>
 
-          <form onSubmit={e => { e.preventDefault(); onSubmit({ ...form, balance: principal, months, interestRate: monthlyRate, paidMonths: parseInt(String(form.paidMonths || 0), 10) || 0, isDebt: true }); }} className="space-y-4">
+          <form onSubmit={e => { e.preventDefault(); onSubmit({ ...form, balance: principal, months, interestRate: monthlyRate, installmentAmount: manualInstallment, dueDay: parseInt(String(form.dueDay || 1), 10), paidMonths: paidInstallments, isDebt: true }); }} className="space-y-4">
             <input type="text" placeholder="Kredi / Borç adı" value={form.name}
               onChange={e => set('name', e.target.value)} required
               className={`w-full px-5 py-4 rounded-2xl border text-sm font-medium outline-none ${inputCls}`}/>
@@ -555,6 +564,21 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Aylık Taksit (Manuel)</p>
+                <input type="number" placeholder="Otomatik hesap için boş bırak" min="0" step="any" value={form.installmentAmount}
+                  onChange={e => set('installmentAmount', e.target.value)}
+                  className={`w-full px-5 py-4 rounded-2xl border text-sm font-black outline-none ${inputCls}`}/>
+              </div>
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Ödeme Günü</p>
+                <input type="number" min="1" max="31" placeholder="1" value={form.dueDay}
+                  onChange={e => set('dueDay', e.target.value)}
+                  className={`w-full px-5 py-4 rounded-2xl border text-sm font-black outline-none ${inputCls}`}/>
+              </div>
+            </div>
+
             {/* Ödenmiş taksit */}
             <div>
               <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Ödenmiş Taksit Sayısı</p>
@@ -562,6 +586,18 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
                 onChange={e => set('paidMonths', e.target.value)}
                 className={`w-full px-5 py-4 rounded-2xl border text-sm font-black outline-none ${inputCls}`}/>
             </div>
+
+            {months > 0 && (
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-950/45 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className={`opacity-40 font-black uppercase tracking-wider ${txt}`}>Taksit İlerlemesi</span>
+                  <span className="font-black text-rose-400">%{Math.round(progressPct)}</span>
+                </div>
+                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-white'}`}>
+                  <div className="h-full rounded-full bg-rose-500 transition-all" style={{ width: `${progressPct}%` }}/>
+                </div>
+              </div>
+            )}
 
             {/* LIVE CALCULATOR */}
             {principal > 0 && months > 0 && monthlyRate > 0 && (
@@ -797,15 +833,12 @@ function AssetModal({
 /* ─── Assets page ──────────────────────────────────────────────────────── */
 type AssetsMode = 'all' | 'credit-cards' | 'loans';
 
-function Assets({ mode = 'all', wallets = [], isDark, color, liveRates, prefs, addWallet = () => {}, updateWallet = () => {}, removeWallet = () => {} }: AssetsProps) {
+function Assets({ mode: _mode = 'all', wallets = [], isDark, color, liveRates, prefs, addWallet = () => {}, updateWallet = () => {}, removeWallet = () => {} }: AssetsProps) {
   const { isPremium } = useAuth();
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const [editor, setEditor] = useState<{ type: 'asset' | 'cc' | 'loan'; walletIndex?: number } | null>(null);
   const cur = normalizeCurrencySymbol(prefs?.currency);
   const defaultCurrency = getPreferredInputCurrency(prefs?.currency);
-  const isCreditCardsMode = mode === 'credit-cards';
-  const isLoansMode = mode === 'loans';
-  const isDebtOnlyMode = isCreditCardsMode || isLoansMode;
 
   const rates = { USD: 33, EUR: 35, GOLD: 3185, ...(liveRates || {}) };
 
@@ -815,17 +848,8 @@ function Assets({ mode = 'all', wallets = [], isDark, color, liveRates, prefs, a
 
   const assets = wallets.filter(w => !w.isDebt);
   const debts = wallets.filter(w => w.isDebt);
-  const creditCardDebts = debts.filter(w => CREDIT_TYPES.includes(w.type));
-  const loanDebts = debts.filter(w => LOAN_TYPES.includes(w.type));
-  const visibleAssets = isPremium ? assets : assets.filter(isBasicPlanAsset);
-  const premiumLockedAssets = isPremium ? [] : assets.filter(w => !isBasicPlanAsset(w));
-  const visibleDebts = isPremium ? debts : [];
-  const modeDebts = isCreditCardsMode
-    ? creditCardDebts
-    : isLoansMode
-      ? loanDebts
-      : visibleDebts;
-  const totalLockedPremiumAccounts = premiumLockedAssets.length + (isPremium ? 0 : debts.length);
+  const visibleAssets = assets;
+  const modeDebts = debts;
 
   const totalAssets = visibleAssets.reduce((s, w) => s + toTL(w), 0);
   const totalDebts = modeDebts.reduce((s, w) => s + toTL(w), 0);
@@ -859,11 +883,6 @@ function Assets({ mode = 'all', wallets = [], isDark, color, liveRates, prefs, a
     const wallet = wallets[idx];
     if (!wallet) return;
 
-    if (!isPremium && wallet.isDebt && !isDebtOnlyMode) {
-      navigate('/premium');
-      return;
-    }
-
     if (CREDIT_TYPES.includes(wallet.type)) {
       setEditor({ type: 'cc', walletIndex: idx });
       return;
@@ -890,16 +909,8 @@ function Assets({ mode = 'all', wallets = [], isDark, color, liveRates, prefs, a
       <PageShell width="wide">
         <PageHeader
           isDark={isDark}
-          title={isCreditCardsMode ? 'Kredi Kartları' : isLoansMode ? 'Kredi ve Taksitler' : 'Varlıklarım'}
-          description={
-            isCreditCardsMode
-              ? 'Kart limitleri, güncel borç ve kullanılabilir limit takibi'
-              : isLoansMode
-                ? 'Kredi bakiyesi, taksit planı ve aylık ödeme görünümü'
-                : isPremium
-                  ? 'Hesaplar, döviz ve borç kartları tek ekranda'
-                  : 'Basic hesapta vadesiz, döviz ve altın birikimleri yönetilir'
-          }
+          title="Finans Hesapları"
+          description="Kredi kartları, kredi/taksit ve varlık hesapları tek ekranda manuel yönetilir"
           className="mb-8"
           titleClassName={`font-display text-step-4 sm:text-6xl mb-2 ${txt}`}
           descriptionClassName={`text-[10px] font-semibold uppercase tracking-widest mb-8 ${isDark ? 'text-white/40' : 'text-slate-500'}`}
@@ -952,16 +963,14 @@ function Assets({ mode = 'all', wallets = [], isDark, color, liveRates, prefs, a
             ) : (
               <MetricCard
                 isDark={isDark}
-                label="Premium Katman"
-                value={`${totalLockedPremiumAccounts} kilitli kayıt`}
-                labelClassName={isDark ? 'text-amber-300/70' : 'text-amber-700/70'}
-                valueClassName="text-xl font-black text-amber-500"
-                className={isDark ? 'bg-amber-500/8 border-amber-400/20 shadow-[0_20px_60px_rgba(245,158,11,0.14)]' : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}
+                label="Aylık Borç Yükü"
+                value={`${cur}${monthlyDebtLoadDisplay.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`}
+                valueClassName="text-xl font-black text-rose-400"
+                className={isDark ? 'bg-rose-500/8 border-rose-400/16 shadow-[0_20px_60px_rgba(244,63,94,0.10)]' : 'bg-slate-50 border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}
               />
             )}
           </div>
 
-          {!isDebtOnlyMode && (
           <SectionCard isDark={isDark} padding="lg" className={cardBg}>
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -973,11 +982,9 @@ function Assets({ mode = 'all', wallets = [], isDark, color, liveRates, prefs, a
             <Plus size={15}/> Yeni Hesap
           </button>
         </div>
-        {!isPremium && (
-          <p className={`mb-4 text-xs leading-6 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
-            Basic hesapta sadece vadesiz, nakit, USD, EUR ve altın hesapları eklenebilir. Yatırım ve borç modülleri Premium merkezinde açılır.
-          </p>
-        )}
+        <p className={`mb-4 text-xs leading-6 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
+          Vadesiz, vadeli, altın, dolar, euro ve diğer varlık tiplerini manuel ekleyebilirsin.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {visibleAssets.map((w, i) => (
             <WalletCard key={i} wallet={w} globalIdx={wallets.indexOf(w)} isDark={isDark} color={color} liveRates={liveRates} displayCurrency={cur} onEdit={handleEdit} onRemove={removeWallet}/>
@@ -989,44 +996,23 @@ function Assets({ mode = 'all', wallets = [], isDark, color, liveRates, prefs, a
             </button>
           )}
         </div>
-        {!isPremium && premiumLockedAssets.length > 0 && (
-          <SectionCard isDark={isDark} className={`mt-5 ${isDark ? 'bg-amber-500/8 border-amber-400/20 shadow-[0_20px_60px_rgba(245,158,11,0.14)]' : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-500">
-                <Crown size={18} />
-              </div>
-              <div>
-                <p className={`text-sm font-black ${txt}`}>{premiumLockedAssets.length} premium hesap görünmüyor</p>
-                <p className={`mt-1 text-xs leading-6 ${isDark ? 'text-white/50' : 'text-slate-600'}`}>
-                  Yatırım veya premium hesap tipleri bu planda düzenlenmez. Detayları görmek için Premium merkezini aç.
-                </p>
-              </div>
-            </div>
           </SectionCard>
-        )}
-          </SectionCard>
-          )}
 
-          {isPremium || isDebtOnlyMode ? (
             <SectionCard isDark={isDark} padding="lg" className={cardBg}>
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-2xl font-black tracking-tight text-rose-500">{isCreditCardsMode ? 'Kart ve KMH' : isLoansMode ? 'Kredi ve Taksit Planları' : 'Borç ve Kartlarım'}</h2>
+              <h2 className="text-2xl font-black tracking-tight text-rose-500">Kredi, Kart ve Taksitler</h2>
               <p className={`text-[10px] uppercase tracking-widest opacity-30 font-black ${txt}`}>{modeDebts.length} kayıt</p>
             </div>
             <div className="flex gap-2 flex-wrap justify-end">
-              {!isLoansMode && (
               <button onClick={() => setEditor({ type: 'cc' })}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs text-white bg-violet-500 hover:bg-violet-600 transition-colors whitespace-nowrap">
                 <CreditCard size={14}/> Kart / KMH
               </button>
-              )}
-              {!isCreditCardsMode && (
               <button onClick={() => setEditor({ type: 'loan' })}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs text-white bg-rose-500 hover:bg-rose-600 transition-colors whitespace-nowrap">
                 <Calculator size={14}/> Kredi / Taksit
               </button>
-              )}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -1040,29 +1026,10 @@ function Assets({ mode = 'all', wallets = [], isDark, color, liveRates, prefs, a
             )}
           </div>
             </SectionCard>
-          ) : (
-            <SectionCard isDark={isDark} padding="lg" className={isDark ? 'bg-amber-500/[0.08] border-amber-400/20 shadow-[0_24px_80px_rgba(245,158,11,0.16)] backdrop-blur-xl' : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className={`text-[10px] font-black uppercase tracking-[0.35em] ${isDark ? 'text-amber-300/70' : 'text-amber-700/70'}`}>Premium Alan</p>
-              <h2 className={`mt-2 text-2xl font-black ${txt}`}>Kart, KMH ve kredi takibi premium planda</h2>
-              <p className={`mt-2 text-xs leading-6 ${isDark ? 'text-white/55' : 'text-slate-600'}`}>
-                Basic hesapta borç portföyü gösterilmez. Premium merkeze geçildiğinde kredi kartları, KMH ve taksitli borç akışı burada açılır.
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/premium')}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white ${color.bg}`}
-            >
-              <Crown size={16} /> Premium Merkezi
-            </button>
-          </div>
-            </SectionCard>
-          )}
         </div>
 
       <AnimatePresence>
-        {editor?.type === 'asset' && <AssetModal key={`asset-${editor.walletIndex ?? 'new'}`} isDark={isDark} color={color} inputCls={inputCls} defaultCurrency={defaultCurrency} initialWallet={activeWallet} title={activeWallet ? 'Varlığı Düzenle' : 'Yeni Varlık Ekle'} submitLabel={activeWallet ? 'Güncelle' : 'Ekle'} onClose={() => setEditor(null)} onSubmit={handleSave} availableAssetTypes={isPremium ? ASSET_TYPES : BASIC_ASSET_TYPES} availableCurrencyTypes={ASSET_CURRENCY_TYPES} helperText={isPremium ? '' : 'Basic hesapta sadece vadesiz, nakit ve döviz / altın birikimleri eklenebilir.'}/>}
+        {editor?.type === 'asset' && <AssetModal key={`asset-${editor.walletIndex ?? 'new'}`} isDark={isDark} color={color} inputCls={inputCls} defaultCurrency={defaultCurrency} initialWallet={activeWallet} title={activeWallet ? 'Varlığı Düzenle' : 'Yeni Varlık Ekle'} submitLabel={activeWallet ? 'Güncelle' : 'Ekle'} onClose={() => setEditor(null)} onSubmit={handleSave} availableAssetTypes={ASSET_TYPES} availableCurrencyTypes={ASSET_CURRENCY_TYPES} helperText='Vadesiz/vadeli, altın, dolar, euro ve diğer hesap tiplerini manuel ekleyebilirsin.'/>}
         {editor?.type === 'cc' && <CreditCardModal key={`cc-${editor.walletIndex ?? 'new'}`} isDark={isDark} color={color} inputCls={inputCls} defaultCurrency={defaultCurrency} initialWallet={activeWallet} title={activeWallet ? 'Borç Hesabını Düzenle' : 'Kredi Kartı / KMH Ekle'} submitLabel={activeWallet ? 'Güncelle' : 'Kartı Ekle'} onClose={() => setEditor(null)} onSubmit={handleSave}/>}
         {editor?.type === 'loan' && <LoanCalcModal key={`loan-${editor.walletIndex ?? 'new'}`} isDark={isDark} inputCls={inputCls} defaultCurrency={defaultCurrency} initialWallet={activeWallet} title={activeWallet ? 'Kredi / Borcu Düzenle' : 'Taksitli Kredi / Borç'} submitLabel={activeWallet ? 'Güncelle' : 'Kaydet'} onClose={() => setEditor(null)} onSubmit={handleSave}/>}
       </AnimatePresence>

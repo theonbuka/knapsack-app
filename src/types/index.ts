@@ -24,6 +24,7 @@ export interface Wallet {
   dueDay?: number;
   months?: string | number;
   interestRate?: string | number;
+  installmentAmount?: string | number;
   paidMonths?: number;
   kmhLimit?: string | number;
 }
