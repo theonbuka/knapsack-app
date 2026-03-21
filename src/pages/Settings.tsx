@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Trash2, Palette, DollarSign, Shield, LogOut, User, Tags, Plus, Check, Target, Edit3, ExternalLink, Crown, FileText } from 'lucide-react';
+import { Download, Upload, Trash2, Palette, DollarSign, Shield, LogOut, User, Tags, Plus, Check, Target, Edit3, ExternalLink, Crown, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader, PageShell, SectionCard } from '../components/UI';
 import { themeColors, customDB, PRESET_EMOJIS, PRESET_COLORS } from '../utils/constants';
@@ -204,6 +204,7 @@ function CategoryEditor({ cats, saveCats, isDark, color, displayCurrency, liveRa
 function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRates, transactions = [], expenses = [] }) {
   usePageMeta('Ayarlar', 'Hesap, tema, kategori ve veri yonetimi ayarlari.');
   const navigate = useNavigate();
+  const importInputRef = useRef(null);
   const { auth, logout, isPremium, subscriptionPlan } = useAuth();
   const [showConfirm, setShowConfirm] = useState(false);
   const [premiumNotice, setPremiumNotice] = useState('');
@@ -270,6 +271,38 @@ function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRa
     a.click();
     URL.revokeObjectURL(url);
     setPremiumNotice('Premium aylık brief indirildi.');
+  };
+
+  const handleImportBackup = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      const wallets = Array.isArray(parsed?.wallets) ? parsed.wallets : [];
+      const importedTransactions = Array.isArray(parsed?.transactions) ? parsed.transactions : [];
+      const importExpenses = Array.isArray(parsed?.expenses) ? parsed.expenses : [];
+      const importCats = Array.isArray(parsed?.cats) ? parsed.cats : [];
+      const importPrefs = parsed?.prefs && typeof parsed.prefs === 'object' ? parsed.prefs : {};
+
+      customDB.set('knapsack_w', wallets);
+      customDB.set('knapsack_t', importedTransactions);
+      customDB.set('knapsack_exp', importExpenses);
+      customDB.set('knapsack_cats', importCats);
+      customDB.set('knapsack_p', importPrefs);
+
+      setPremiumNotice('Yedek geri yuklendi. Sayfa yenileniyor...');
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 350);
+    } catch (err) {
+      console.error('Backup import failed:', err);
+      setPremiumNotice('Yedek dosyasi gecersiz veya bozuk. Lutfen dogru JSON dosyasini sec.');
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const handleClearData = async () => {
@@ -503,6 +536,25 @@ function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRa
             <div className="text-left">
               <p className="font-black text-sm">{isPremium ? 'Dışa Aktar (JSON)' : 'Dışa Aktar (JSON) · Premium'}</p>
               <p className={`text-xs opacity-40 ${txt}`}>{isPremium ? 'Tüm veriyi yedekle' : 'JSON yedekleme premium kullanıcılara açık'}</p>
+            </div>
+          </button>
+
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportBackup}
+          />
+
+          <button
+            onClick={() => importInputRef.current?.click()}
+            className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all ${isDark ? 'bg-slate-950/45 border-white/10 hover:border-white/30 text-white' : 'border-slate-200 hover:border-indigo-400 text-slate-700'}`}
+          >
+            <Upload size={18} className="text-indigo-500 flex-shrink-0"/>
+            <div className="text-left">
+              <p className="font-black text-sm">Yedek Içe Aktar (JSON)</p>
+              <p className={`text-xs opacity-40 ${txt}`}>Kaybolan veriyi bu cihaza geri yukler</p>
             </div>
           </button>
 
