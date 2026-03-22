@@ -29,7 +29,6 @@ interface LoanFormState {
   iconType: string;
   isDebt: boolean;
   months: string;
-  interestRate: string;
   installmentAmount: string;
   dueDay: number | string;
   paidMonths: number | string;
@@ -105,17 +104,9 @@ interface AssetsProps {
 }
 
 /* ─── helpers ─────────────────────────────────────────────────────────── */
-// PMT — standart kredi taksit formülü
-function calcPMT(principal: number, monthlyRatePct: number, months: number) {
-  if (!principal || !months) return 0;
-  const r = monthlyRatePct / 100;
-  if (r === 0) return principal / months;
-  return principal * (r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
-}
-
 const ASSET_TYPES = ['Vadesiz Hesap', 'Vadeli Hesap', 'Nakit', 'Altın Hesabı', 'Dolar Hesabı', 'Euro Hesabı', 'Yatırım'];
-const CREDIT_TYPES = ['Kredi Kartı', 'KMH', 'Kredi Kartı + KMH'];
-const LOAN_TYPES = ['Taksitli Kredi', 'Kredi / Borç', 'Taksit'];
+const CREDIT_TYPES = ['Kredi Kartı', 'Kredi Kartı + KMH'];
+const LOAN_TYPES = ['Kredi'];
 const ASSET_CURRENCY_TYPES = ['₺', 'USD', 'EUR', 'GOLD'];
 const ENTRY_CURRENCY_TYPES = ['₺', 'USD', 'EUR'];
 
@@ -140,11 +131,10 @@ function createLoanForm(defaultCurrency = '₺'): WalletType {
   return {
     name: '',
     balance: '',
-    type: 'Taksitli Kredi',
+    type: 'Kredi',
     iconType: defaultCurrency,
     isDebt: true,
     months: '',
-    interestRate: '',
     installmentAmount: '',
     dueDay: 1,
     paidMonths: 0,
@@ -300,15 +290,15 @@ function WalletCard({ wallet, globalIdx, isDark, color: _color, liveRates, displ
   const displayEquivalent = convertFromTRY(baseValueTRY, displayCurrency, rates);
   const showDisplayEquivalent = wallet.iconType === 'GOLD' || normalizeCurrencySymbol(wallet.iconType) !== displayCurrency;
 
-  const monthlyPmt = isLoan && wallet.months && wallet.interestRate != null
+  const totalInstallments = parseInt(String(wallet.months || 0), 10);
+  const monthlyPmt = isLoan && totalInstallments > 0
     ? (parseFloat(String(wallet.installmentAmount || 0)) > 0
       ? parseFloat(String(wallet.installmentAmount || 0))
-      : calcPMT(val, parseFloat(String(wallet.interestRate)), parseInt(String(wallet.months), 10)))
+      : val / totalInstallments)
     : 0;
 
-  const totalCost = monthlyPmt * parseInt(String(wallet.months || 0), 10);
+  const totalCost = monthlyPmt * totalInstallments;
   const totalInterest = totalCost - val;
-  const totalInstallments = parseInt(String(wallet.months || 0), 10);
   const paidInstallments = parseInt(String(wallet.paidMonths || 0), 10);
   const remaining = isLoan ? Math.max(0, totalInstallments - paidInstallments) : 0;
   const loanProgressPct = totalInstallments > 0 ? Math.min(100, (paidInstallments / totalInstallments) * 100) : 0;
@@ -443,14 +433,13 @@ function WalletCard({ wallet, globalIdx, isDark, color: _color, liveRates, displ
             )}
             {isLoan && (
               <>
-                <Row label="Faiz Oranı (aylık)" val={`%${wallet.interestRate}`} txt={txt}/>
                 <Row label="Toplam Taksit" val={`${wallet.months} ay`} txt={txt}/>
                 <Row label="Ödeme Günü" val={wallet.dueDay ? `Her ay ${wallet.dueDay}. günü` : '-'} txt={txt}/>
                 <Row label="Ödenen Taksit" val={`${paidInstallments} ay`} txt={txt}/>
                 <Row label="Kalan Taksit" val={`${remaining} ay`} txt={txt}/>
                 <Row label="Aylık Taksit" val={formatWalletAmount(monthlyPmt, wallet.iconType, 2)} txt={txt} highlight="text-rose-400"/>
                 <Row label="Toplam Ödenecek" val={formatWalletAmount(totalCost, wallet.iconType)} txt={txt}/>
-                <Row label="Toplam Faiz" val={formatWalletAmount(totalInterest, wallet.iconType)} txt={txt} highlight="text-rose-400"/>
+                <Row label="Toplam Finansman Farkı" val={formatWalletAmount(totalInterest, wallet.iconType)} txt={txt} highlight="text-rose-400"/>
               </>
             )}
           </motion.div>
@@ -475,11 +464,10 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
   const [form, setForm] = useState<LoanFormState>(() => initialWallet ? {
     name: initialWallet.name || '',
     balance: String(initialWallet.balance || ''),
-    type: initialWallet.type || 'Taksitli Kredi',
+    type: initialWallet.type || 'Kredi',
     iconType: initialWallet.iconType || defaultCurrency,
     isDebt: true,
     months: String(initialWallet.months || ''),
-    interestRate: String(initialWallet.interestRate || ''),
     installmentAmount: String(initialWallet.installmentAmount || ''),
     dueDay: initialWallet.dueDay || 1,
     paidMonths: initialWallet.paidMonths || 0,
@@ -487,14 +475,12 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
   const set = <K extends keyof LoanFormState>(k: K, v: LoanFormState[K]) => setForm(p => ({ ...p, [k]: v }));
   const unitLabel = (UNIT_LABELS as Record<string, string>)[form.iconType] || form.iconType;
 
-  const monthlyRate = parseFloat(String(form.interestRate || 0)) || 0;
   const months = parseInt(String(form.months || 0), 10) || 0;
   const principal = parseFloat(String(form.balance || 0)) || 0;
   const manualInstallment = parseFloat(String(form.installmentAmount || 0)) || 0;
-  const pmt = manualInstallment > 0 ? manualInstallment : calcPMT(principal, monthlyRate, months);
+  const pmt = manualInstallment > 0 ? manualInstallment : (months > 0 ? principal / months : 0);
   const totalCost = pmt * months;
   const totalInt = totalCost - principal;
-  const annualEff = monthlyRate > 0 ? (Math.pow(1 + monthlyRate / 100, 12) - 1) * 100 : 0;
   const paidInstallments = parseInt(String(form.paidMonths || 0), 10) || 0;
   const progressPct = months > 0 ? Math.min(100, (paidInstallments / months) * 100) : 0;
 
@@ -508,12 +494,12 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
           <div className="flex justify-between items-center mb-7">
             <div>
               <h2 className={`text-2xl font-black ${txt}`}>{title}</h2>
-              <p className={`text-xs opacity-40 mt-1 ${txt}`}>Faiz ve taksit hesaplama</p>
+              <p className={`text-xs opacity-40 mt-1 ${txt}`}>Manuel borç ve taksit takibi</p>
             </div>
             <button onClick={onClose} className="opacity-40 hover:opacity-100"><X size={20} className={txt}/></button>
           </div>
 
-          <form onSubmit={e => { e.preventDefault(); onSubmit({ ...form, balance: principal, months, interestRate: monthlyRate, installmentAmount: manualInstallment, dueDay: parseInt(String(form.dueDay || 1), 10), paidMonths: paidInstallments, isDebt: true }); }} className="space-y-4">
+          <form onSubmit={e => { e.preventDefault(); onSubmit({ ...form, balance: principal, months, installmentAmount: manualInstallment, dueDay: parseInt(String(form.dueDay || 1), 10), paidMonths: paidInstallments, isDebt: true }); }} className="space-y-4">
             <input type="text" placeholder="Kredi / Borç adı" value={form.name}
               onChange={e => set('name', e.target.value)} required
               className={`w-full px-5 py-4 rounded-2xl border text-sm font-medium outline-none ${inputCls}`}/>
@@ -539,22 +525,18 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
 
             {/* Ana borç */}
             <div>
-              <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Toplam Borç Tutarı ({unitLabel})</p>
+              <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Toplam Borç / Limit ({unitLabel})</p>
               <input type="number" placeholder="100000" value={form.balance}
                 onChange={e => set('balance', e.target.value)} required min="1" step="any"
                 className={`w-full px-5 py-4 rounded-2xl border text-lg font-black outline-none ${inputCls}`}/>
             </div>
 
-            {/* Faiz + Ay */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Aylık Faiz Oranı (%)</p>
-                <div className="relative">
-                  <input type="number" placeholder="3.50" step="0.01" min="0" max="100" value={form.interestRate}
-                    onChange={e => set('interestRate', e.target.value)} required
-                    className={`w-full px-5 py-4 rounded-2xl border text-sm font-black outline-none pr-10 ${inputCls}`}/>
-                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-sm opacity-40 font-black ${txt}`}>%</span>
-                </div>
+                <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Aylık Taksit ({unitLabel})</p>
+                <input type="number" placeholder="4500" min="0" step="any" value={form.installmentAmount}
+                  onChange={e => set('installmentAmount', e.target.value)} required
+                  className={`w-full px-5 py-4 rounded-2xl border text-sm font-black outline-none ${inputCls}`}/>
               </div>
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Taksit Sayısı (Ay)</p>
@@ -566,16 +548,16 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Aylık Taksit (Manuel)</p>
-                <input type="number" placeholder="Otomatik hesap için boş bırak" min="0" step="any" value={form.installmentAmount}
-                  onChange={e => set('installmentAmount', e.target.value)}
-                  className={`w-full px-5 py-4 rounded-2xl border text-sm font-black outline-none ${inputCls}`}/>
-              </div>
-              <div>
                 <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Ödeme Günü</p>
                 <input type="number" min="1" max="31" placeholder="1" value={form.dueDay}
                   onChange={e => set('dueDay', e.target.value)}
                   className={`w-full px-5 py-4 rounded-2xl border text-sm font-black outline-none ${inputCls}`}/>
+              </div>
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ${txt}`}>Kalan Taksit</p>
+                <div className={`w-full px-5 py-4 rounded-2xl border text-sm font-black ${isDark ? 'bg-slate-950/40 border-white/10 text-white/70' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                  {Math.max(0, months - paidInstallments)} ay
+                </div>
               </div>
             </div>
 
@@ -599,27 +581,18 @@ function LoanCalcModal({ isDark, inputCls, onClose, onSubmit, defaultCurrency, i
               </div>
             )}
 
-            {/* LIVE CALCULATOR */}
-            {principal > 0 && months > 0 && monthlyRate > 0 && (
+            {principal > 0 && months > 0 && pmt > 0 && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 className={`rounded-2xl border p-5 space-y-3 ${isDark ? 'bg-rose-500/5 border-rose-500/15' : 'bg-rose-50 border-rose-200'}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <Calculator size={16} className="text-rose-400"/>
-                  <span className="text-sm font-black text-rose-400">Hesaplama Sonucu</span>
+                  <span className="text-sm font-black text-rose-400">Ödeme Özeti</span>
                 </div>
                 <Row label="Aylık Taksit" val={formatWalletAmount(pmt, form.iconType, 2)} txt={txt} highlight="text-rose-500"/>
                 <Row label="Toplam Ödenecek" val={formatWalletAmount(totalCost, form.iconType)} txt={txt}/>
-                <Row label="Toplam Faiz Maliyeti" val={formatWalletAmount(totalInt, form.iconType)} txt={txt} highlight="text-rose-400"/>
-                <Row label="Yıllık Efektif Faiz" val={`%${annualEff.toFixed(2)}`} txt={txt}/>
-                {Number(form.paidMonths || 0) > 0 && <Row label="Kalan Borç" val={formatWalletAmount(Math.max(0, pmt * (months - parseInt(String(form.paidMonths || 0), 10))), form.iconType)} txt={txt} highlight="text-rose-400"/>}
+                <Row label="Toplam Finansman Farkı" val={formatWalletAmount(totalInt, form.iconType)} txt={txt} highlight="text-rose-400"/>
+                <Row label="Kalan Borç" val={formatWalletAmount(Math.max(0, pmt * (months - paidInstallments)), form.iconType)} txt={txt} highlight="text-rose-400"/>
               </motion.div>
-            )}
-
-            {principal > 0 && months > 0 && monthlyRate === 0 && (
-              <div className={`p-4 rounded-2xl flex items-center gap-3 ${isDark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'}`}>
-                <AlertTriangle size={16} className="text-amber-400 flex-shrink-0"/>
-                <p className="text-xs text-amber-400 font-black">Faiz oranı 0 — faizsiz eşit taksit hesaplanıyor.</p>
-              </div>
             )}
 
             <div className={`sticky bottom-0 pt-4 ${isDark ? 'bg-gradient-to-t from-[#0e0e0f] via-[#0e0e0f] to-transparent' : 'bg-gradient-to-t from-white via-white to-transparent'}`}>
@@ -861,8 +834,15 @@ function Assets({ mode: _mode = 'all', wallets = [], isDark, color, liveRates, p
 
   // Total monthly debt obligations
   const monthlyDebtLoad = modeDebts.reduce((s, w) => {
-    if (LOAN_TYPES.includes(w.type) && w.months && w.interestRate != null) {
-      return s + toTRYValue(calcPMT(parseFloat(String(w.balance || 0)), parseFloat(String(w.interestRate || 0)), parseInt(String(w.months || 0), 10)), w.iconType, rates);
+    if (LOAN_TYPES.includes(w.type)) {
+      const months = parseInt(String(w.months || 0), 10);
+      const manualInstallment = parseFloat(String(w.installmentAmount || 0)) || 0;
+      const derivedInstallment = months > 0 ? parseFloat(String(w.balance || 0)) / months : 0;
+      const monthlyInstallment = manualInstallment > 0 ? manualInstallment : derivedInstallment;
+
+      if (monthlyInstallment > 0) {
+        return s + toTRYValue(monthlyInstallment, w.iconType, rates);
+      }
     }
     return s;
   }, 0);
