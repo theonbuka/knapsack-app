@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { surface as surfaceCls, text as textCls, focusRing } from '../styles/uiClasses';
 
 interface QuickAddFormState {
   type: string;
@@ -51,6 +53,7 @@ interface QuickAddSheetProps {
   submitError: string;
   onClearError: () => void;
   fixedCurrencyLabel?: string;
+  isSubmitting?: boolean;
 }
 
 function getQuickAmountPresets(type: string, currency: string) {
@@ -75,16 +78,15 @@ export function QuickAddSheet({
   submitError,
   onClearError,
   fixedCurrencyLabel,
+  isSubmitting = false,
 }: QuickAddSheetProps) {
-  const inputCls = isDark
-    ? 'bg-slate-950/55 border-white/[0.10] text-white placeholder:text-white/25 focus:border-indigo-400/60 focus:bg-slate-950/70'
-    : 'bg-white/92 border-slate-200/80 text-slate-950 focus:border-indigo-400/60';
-  const fieldFocusCls = isDark
-    ? 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 focus-visible:border-indigo-400/60'
-    : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 focus-visible:border-indigo-400/70';
-  const buttonFocusCls = isDark
-    ? 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40'
-    : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200';
+  const { t } = useTranslation();
+  const inputCls = surfaceCls.input(isDark);
+  const fieldFocusCls = focusRing.base(isDark);
+  const buttonFocusCls = focusRing.base(isDark);
+  const txt = textCls.primary(isDark);
+  const txtSec = textCls.secondary(isDark);
+  const txtMuted = textCls.muted(isDark);
   const displayCurrency = fixedCurrencyLabel || form.currency;
   const quickAmounts = useMemo(() => getQuickAmountPresets(form.type, displayCurrency), [displayCurrency, form.type]);
   const selectedWallet = wallets.find(wallet => wallet.name === form.walletId);
@@ -169,9 +171,9 @@ export function QuickAddSheet({
         transition={{ type: 'spring', damping: 32, stiffness: 340, mass: 0.9 }}
         role="dialog"
         aria-modal="true"
-        aria-label="Hızlı işlem"
-        className={`relative w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] border overflow-hidden ${
-          isDark ? 'bg-slate-900/92 border-white/[0.10] shadow-pack-card backdrop-blur-2xl' : 'bg-white/96 border-slate-200/80 shadow-2xl backdrop-blur-xl'
+        aria-label={t('quickAdd.title')}
+        className={`relative w-full max-w-md rounded-t-sheet sm:rounded-card border overflow-hidden ${
+          isDark ? 'bg-slate-900/92 border-white/[0.08] shadow-modal-dark backdrop-blur-2xl' : 'bg-white/96 border-slate-200/70 shadow-modal-light backdrop-blur-xl'
         }`}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -187,29 +189,29 @@ export function QuickAddSheet({
         <div className="relative max-h-[86dvh] sm:max-h-[90vh] overflow-y-auto p-6 sm:p-8 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
-              <p className={`font-meta text-[10px] font-semibold uppercase tracking-[0.32em] ${isDark ? 'text-indigo-300/70' : 'text-indigo-500/70'}`}>Hızlı İşlem</p>
-              <h2 className={`mt-2 font-display text-3xl font-extrabold tracking-[-0.03em] ${isDark ? 'text-white' : 'text-slate-950'}`}>
-                {form.type === 'income' ? 'Gelir Ekle' : 'İşlem Ekle'}
+              <p className={`font-meta text-[10px] font-semibold uppercase tracking-[0.32em] ${isDark ? 'text-indigo-300/70' : 'text-indigo-500/70'}`}>{t('quickAdd.title')}</p>
+              <h2 className={`mt-2 font-display text-3xl font-extrabold tracking-[-0.03em] ${txt}`}>
+                {form.type === 'income' ? t('quickAdd.addIncome') : t('quickAdd.addExpense')}
               </h2>
-              <p className={`mt-2 text-sm ${isDark ? 'text-slate-300/80' : 'text-slate-600'}`}>
-                Tutar, kategori, kaynak ve tarihi tek ekranda tamamla.
+              <p className={`mt-2 text-sm ${txtSec}`}>
+                {t('quickAdd.subtitle')}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className={`flex gap-1 rounded-[1rem] border p-1 ${isDark ? 'border-white/[0.08] bg-slate-950/55' : 'border-slate-200 bg-slate-100/80'}`}>
+              <div className={`flex gap-1 rounded-btn-lg border p-1 ${isDark ? 'border-white/[0.08] bg-slate-950/55' : 'border-slate-200 bg-slate-100/80'}`}>
                 {[['expense', 'Gider'], ['income', 'Gelir']].map(([type, label]) => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => setForm(previous => ({ ...previous, type }))}
                     aria-pressed={form.type === type}
-                    className={`px-3 py-2 rounded-[0.8rem] text-[10px] font-black uppercase tracking-[0.24em] transition-all ${buttonFocusCls} ${
+                    className={`px-3 py-2 rounded-btn text-[10px] font-black uppercase tracking-[0.24em] transition-all ${buttonFocusCls} ${
                       form.type === type
                         ? type === 'income'
                           ? 'bg-emerald-500 text-white shadow-[0_10px_24px_rgba(16,185,129,0.28)]'
                           : 'bg-rose-500 text-white shadow-[0_10px_24px_rgba(244,63,94,0.24)]'
-                        : isDark ? 'text-white/35 hover:text-white/65' : 'text-slate-500 hover:text-slate-700'
+                        : isDark ? 'text-white/30 hover:text-white/65' : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     {label}
@@ -230,25 +232,25 @@ export function QuickAddSheet({
 
           <div className="mb-5 flex flex-wrap gap-2">
             {overviewChips.map(chip => (
-              <span key={chip.key} className={`rounded-full px-3 py-1.5 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${isDark ? 'bg-white/[0.05] text-white/60' : 'bg-slate-100 text-slate-600'}`}>
+              <span key={chip.key} className={`rounded-pill px-3 py-1.5 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${isDark ? 'bg-white/[0.05] text-white/60 border border-white/[0.07]' : 'bg-slate-100 text-slate-600 border border-slate-200/70'}`}>
                 {chip.label}
               </span>
             ))}
           </div>
 
-          <div className={`mb-7 rounded-[2rem] border px-4 py-5 text-center ${isDark ? 'border-white/[0.08] bg-slate-950/45' : 'border-slate-200/80 bg-white/80'}`}>
+          <div className={`mb-7 rounded-card border px-4 py-5 text-center ${isDark ? 'border-white/[0.07] bg-slate-950/40' : 'border-slate-200/70 bg-white/80'}`}>
             <div className="flex items-start justify-center gap-1">
               <span className={`font-num text-2xl font-light mt-3 ${isDark ? 'text-white/25' : 'text-slate-300'}`}>
                 {displayCurrency === 'USD' ? '$' : displayCurrency === 'EUR' ? '€' : '₺'}
               </span>
               <input
                 type="number" placeholder="0" required value={form.amount}
-                aria-label="İşlem tutarı"
+                aria-label={t('common.amount')}
                 onChange={event => {
                   if (submitError) onClearError();
                   setForm(previous => ({ ...previous, amount: event.target.value }));
                 }}
-                className={`font-num w-[200px] rounded-[1.5rem] bg-transparent text-center text-7xl font-extrabold tracking-tight sm:text-8xl ${fieldFocusCls}`}
+                className={`font-num w-[200px] rounded-fab bg-transparent text-center text-7xl font-extrabold tracking-tight sm:text-8xl ${fieldFocusCls}`}
                 style={{ color: form.type === 'income' ? '#34d399' : '#f87171' }}
                 autoFocus
               />
@@ -278,18 +280,18 @@ export function QuickAddSheet({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
-              type="text" placeholder="Başlık" value={form.title}
+              type="text" placeholder={t('common.title')} value={form.title}
               onChange={event => {
                 if (submitError) onClearError();
                 setForm(previous => ({ ...previous, title: event.target.value }));
               }}
               required
-              className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all ${inputCls} ${fieldFocusCls}`}
+              className={`w-full px-4 py-3 rounded-btn-lg border text-sm font-medium transition-all ${inputCls} ${fieldFocusCls}`}
             />
 
             {recentSuggestions.length > 0 && (
               <div>
-                <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${isDark ? 'text-white/25' : 'text-slate-400'}`}>
+                <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${txtMuted}`}>
                   Son Kullanılanlar
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -317,7 +319,7 @@ export function QuickAddSheet({
 
             {recommendedCategories.length > 0 && (
               <div>
-                <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${isDark ? 'text-white/25' : 'text-slate-400'}`}>
+                <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${txtMuted}`}>
                   Sık Kategoriler
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -342,17 +344,17 @@ export function QuickAddSheet({
             )}
 
             <input
-              type="text" placeholder="Not ekle (opsiyonel)" value={form.note || ''}
+              type="text" placeholder={`${t('common.note')} (${t('common.optional')})`} value={form.note || ''}
               onChange={event => {
                 if (submitError) onClearError();
                 setForm(previous => ({ ...previous, note: event.target.value }));
               }}
-              className={`w-full px-4 py-2.5 rounded-2xl border text-sm transition-all ${inputCls} ${fieldFocusCls} opacity-60 focus:opacity-100`}
+              className={`w-full px-4 py-2.5 rounded-btn-lg border text-sm transition-all ${inputCls} ${fieldFocusCls} opacity-60 focus:opacity-100`}
             />
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
-                <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${isDark ? 'text-white/25' : 'text-slate-400'}`}>Tarih</p>
+                <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${txtMuted}`}>Tarih</p>
                 <input
                   type="date"
                   value={form.entryDate}
@@ -360,11 +362,11 @@ export function QuickAddSheet({
                     if (submitError) onClearError();
                     setForm(previous => ({ ...previous, entryDate: event.target.value }));
                   }}
-                  className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all ${inputCls} ${fieldFocusCls}`}
+                  className={`w-full px-4 py-3 rounded-btn-lg border text-sm font-medium transition-all ${inputCls} ${fieldFocusCls}`}
                 />
               </label>
 
-              <div className={`rounded-[1.4rem] border px-4 py-3 ${isDark ? 'border-white/[0.08] bg-white/[0.03] text-white/65' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+              <div className={`rounded-widget border px-4 py-3 ${isDark ? 'border-white/[0.07] bg-white/[0.03] text-white/65' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
                 <p className="font-meta text-[10px] font-semibold uppercase tracking-[0.24em] opacity-60">Akış</p>
                 <p className="mt-2 text-sm font-black">{form.type === 'income' ? 'Gelir hanesine işlenecek' : 'Gider hanesine işlenecek'}</p>
                 <p className="mt-1 text-xs opacity-60">Kaydettiğinde işlem geçmişi ve ana sayfa kartları anında güncellenir.</p>
@@ -372,7 +374,7 @@ export function QuickAddSheet({
             </div>
 
             <div>
-              <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${isDark ? 'text-white/25' : 'text-slate-400'}`}>Kategori</p>
+              <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${txtMuted}`}>Kategori</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {sortedCategories.map(cat => (
                   <button
@@ -382,9 +384,9 @@ export function QuickAddSheet({
                       setForm(previous => ({ ...previous, categoryId: cat.id }));
                     }}
                     aria-pressed={form.categoryId === cat.id}
-                    className={`flex items-center gap-2 rounded-2xl px-3 py-3 text-xs font-semibold border transition-all ${buttonFocusCls} ${
+                    className={`flex items-center gap-2 rounded-btn-lg px-3 py-3 text-xs font-semibold border transition-all ${buttonFocusCls} ${
                       form.categoryId === cat.id
-                        ? 'border-transparent text-white shadow-[0_10px_24px_rgba(99,102,241,0.22)]'
+                        ? 'border-transparent text-white shadow-btn-primary'
                         : isDark ? 'border-white/[0.08] text-white/35 hover:text-white/65' : 'border-slate-200 text-slate-400 hover:text-slate-600'
                     }`}
                     style={form.categoryId === cat.id ? { backgroundColor: cat.color || '#6366f1' } : {}}
@@ -398,7 +400,7 @@ export function QuickAddSheet({
 
             {wallets.length > 0 && (
               <div>
-                <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${isDark ? 'text-white/25' : 'text-slate-400'}`}>Ödeme Kaynağı</p>
+                <p className={`mb-2 font-meta text-[10px] font-semibold uppercase tracking-[0.24em] ${txtMuted}`}>Ödeme Kaynağı</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -445,10 +447,12 @@ export function QuickAddSheet({
             <div className={`sticky bottom-0 pt-4 ${isDark ? 'bg-gradient-to-t from-slate-900 via-slate-900 to-transparent' : 'bg-gradient-to-t from-white via-white to-transparent'}`}>
               <button
                 type="submit"
-                className={`w-full rounded-2xl py-4 text-sm font-semibold uppercase tracking-[0.4em] text-white transition-all hover:opacity-90 active:scale-[0.98] ${buttonFocusCls} ${activeColor.bg}`}
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
+                className={`w-full rounded-btn-lg py-4 text-sm font-semibold uppercase tracking-[0.4em] text-white transition-all ${buttonFocusCls} ${activeColor.bg} ${isSubmitting ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-90 active:scale-[0.97]'}`}
                 style={{ boxShadow: `0 14px 32px ${activeColor.hex}40` }}
               >
-                Kaydet
+                {isSubmitting ? t('common.saving') : t('common.save')}
               </button>
             </div>
           </form>

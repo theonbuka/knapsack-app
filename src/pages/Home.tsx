@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Activity, TrendingUp, PieChart, Zap, ChevronRight, AlertCircle, Target, Crown, Lock, Bell, AlertTriangle } from 'lucide-react';
+import { PieChart, Zap, ChevronRight, AlertCircle, Target, Crown, Lock, Bell, AlertTriangle } from 'lucide-react';
 import { MetricCard, PageHeader, PageShell, SectionCard } from '../components/UI';
+import { text as textCls, surface, divider } from '../styles/uiClasses';
 import { useAuth } from '../contexts/AuthContext';
 import { convertFromTRY, normalizeCurrencySymbol } from '../utils/currency';
 import { getSpendingAnomalies, getUpcomingRenewals } from '../utils/premiumInsights';
@@ -140,13 +141,10 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
   const catMap = useMemo(() => Object.fromEntries(cats.map(c => [c.id, c])), [cats]);
 
   const cur = normalizeCurrencySymbol(prefs?.currency);
-  const txt = isDark ? 'text-white' : 'text-slate-900';
-  const txtSec = isDark ? 'text-slate-300/78' : 'text-slate-500';
-  const txtTer = isDark ? 'text-white/45' : 'text-slate-400';
-  const cardBg = isDark
-    ? 'bg-slate-900/48 border-white/10 shadow-pack-card backdrop-blur-xl'
-    : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]';
-  const nestedCardBg = isDark ? 'bg-slate-950/45 border-white/10' : 'bg-slate-50 border-slate-100';
+  const txt = textCls.primary(isDark);
+  const txtSec = textCls.secondary(isDark);
+  const txtTer = textCls.tertiary(isDark);
+  const nestedCardBg = isDark ? 'bg-slate-950/45 border-white/[0.08]' : 'bg-slate-50/80 border-slate-200/50';
   const netWorth = metrics.totalAssets - metrics.totalDebt;
   const netWorthDisplay = convertFromTRY(Math.abs(netWorth), cur, liveRates);
   const totalAssetsDisplay = convertFromTRY(metrics.totalAssets, cur, liveRates);
@@ -173,7 +171,7 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
     >
       <PageShell width="wide" topSpacing="hero">
       {/* ── LIVE TICKER ───────────────────────────────────────── */}
-      <div className={`overflow-hidden py-2.5 -mx-4 sm:-mx-6 mb-12 border-b ${isDark ? 'border-white/10 bg-slate-900/30 backdrop-blur-xl' : 'border-slate-200/70 bg-slate-50/80 backdrop-blur-xl'}`}>
+      <div className={`overflow-hidden py-2.5 -mx-4 sm:-mx-6 mb-12 border-b backdrop-blur-xl ${isDark ? 'border-white/[0.08] bg-slate-900/25' : 'border-slate-200/60 bg-slate-50/70'}`}>
         <div className={`ticker-track flex gap-12 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.3em] ${isDark ? 'text-indigo-400/60' : 'text-indigo-600/50'}`}>
           {Array(6).fill([
             `USD ${tickerRates.USD.toFixed(2)} ₺`,
@@ -222,8 +220,8 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
           transition={{ delay: 0.12 }}
           className="block"
         >
-          <div className={`h-full p-7 sm:p-9 rounded-[2.5rem] border relative overflow-hidden ${
-            isDark ? 'bg-indigo-500/[0.11] border-indigo-400/20 shadow-[0_30px_90px_rgba(99,102,241,0.22)] backdrop-blur-xl' : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'
+          <div className={`h-full p-7 sm:p-9 rounded-card border relative overflow-hidden ${
+            isDark ? 'bg-indigo-500/[0.10] border-indigo-400/20 shadow-[0_30px_80px_rgba(99,102,241,0.20)] backdrop-blur-xl' : 'bg-white border-indigo-100/80 shadow-card-light'
           }`}>
             <div className="relative z-10">
               <p className={`text-[10px] font-semibold uppercase tracking-[0.45em] mb-5 ${isDark ? 'text-indigo-400/70' : 'text-indigo-600/70'}`}>
@@ -232,7 +230,7 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
               <h2 className={`font-num text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-none mb-8 ${netWorth < 0 ? 'text-rose-500' : txt}`}>
                 {cur}{netWorthDisplay.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
               </h2>
-              <div className={`h-px mb-8 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+              <div className={`h-px mb-8 ${divider(isDark)}`} />
               <div className="flex gap-8 sm:gap-12">
                 <div>
                   <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${txtSec}`}>Varlıklar</p>
@@ -242,7 +240,7 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
                 </div>
                 {metrics.totalDebt > 0 && (
                   <>
-                    <div className={`w-px self-stretch ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                    <div className={`w-px self-stretch border-l ${divider(isDark)}`} />
                     <div>
                       <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${txtSec}`}>Borçlar</p>
                       <p className="font-num text-xl sm:text-2xl font-bold text-rose-500">
@@ -263,7 +261,7 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
           transition={{ delay: 0.16 }}
           className="block"
         >
-          <div className={`h-full p-7 rounded-[2.5rem] border flex flex-col items-center justify-center ${cardBg}`}>
+          <div className={`h-full p-7 flex flex-col items-center justify-center ${surface.card(isDark)}`}>
             <p className={`text-[10px] font-semibold uppercase tracking-[0.4em] mb-7 ${txtSec}`}>Dağılım</p>
             <div className="relative w-32 h-32 mb-7">
               <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
@@ -343,7 +341,7 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
             transition={{ delay: 0.22 }}
             className="block"
           >
-            <SectionCard isDark={isDark} className={`h-full ${cardBg}`}>
+            <SectionCard isDark={isDark} className="h-full">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
                   <Target size={13} className="text-emerald-500 flex-shrink-0" />
@@ -383,7 +381,7 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
                 ? isDark
                   ? 'bg-amber-500/[0.08] border-amber-400/20 shadow-[0_24px_80px_rgba(245,158,11,0.16)] backdrop-blur-xl'
                   : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'
-                : cardBg
+                : ''
             }`}
           >
           <div className="flex items-center justify-between gap-4 mb-5">
@@ -515,7 +513,7 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
           transition={{ delay: 0.26 }}
           className="block"
         >
-          <SectionCard isDark={isDark} padding="lg" className={cardBg}>
+          <SectionCard isDark={isDark} padding="lg">
             <div className="flex justify-between items-end mb-5 px-1">
               <div>
                 <h2 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${txt}`}>
@@ -564,12 +562,12 @@ export default function Home({ transactions = [], wallets = [], expenses = [], i
                       key={t.id}
                       variants={stagger.item}
                       whileHover={{ y: -2, transition: { duration: 0.15 } }}
-                      className={`flex items-center justify-between p-4 sm:p-5 rounded-[1.8rem] border transition-shadow cursor-default group ${nestedCardBg}`}
+                      className={`flex items-center justify-between p-4 sm:p-5 rounded-widget border transition-shadow cursor-default group ${nestedCardBg}`}
                       style={{ willChange: 'transform' }}
                     >
                       <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                         <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg flex-shrink-0"
+                          className="w-10 h-10 rounded-btn-lg flex items-center justify-center text-lg flex-shrink-0"
                           style={{ backgroundColor: `${cat.color}1a` }}
                         >
                           {cat.emoji || '📌'}

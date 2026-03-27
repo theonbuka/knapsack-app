@@ -1,4 +1,6 @@
 import React, { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { setLanguage, SUPPORTED_LANGUAGES, getCurrentLanguage } from '../i18n';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Upload, Trash2, Palette, DollarSign, Shield, LogOut, User, Tags, Plus, Check, Target, Edit3, ExternalLink, Crown, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -201,8 +203,15 @@ function CategoryEditor({ cats, saveCats, isDark, color, displayCurrency, liveRa
   );
 }
 
-function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRates, transactions = [], expenses = [] }) {
-  usePageMeta('Ayarlar', 'Hesap, tema, kategori ve veri yonetimi ayarlari.');
+function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRates, transactions = [], expenses = [], syncStatus = 'idle', lastSyncError = null }: { isDark: boolean; color: unknown; prefs: unknown; savePrefs: unknown; cats?: unknown[]; saveCats: unknown; liveRates: unknown; transactions?: unknown[]; expenses?: unknown[]; syncStatus?: string; lastSyncError?: string | null }) {
+  const { t } = useTranslation();
+  const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
+  usePageMeta(t('settings.title'), 'Hesap, tema, kategori ve veri yonetimi ayarlari.');
+
+  const handleLanguageChange = (lang: string) => {
+    setLanguage(lang);
+    setCurrentLang(lang);
+  };
   const navigate = useNavigate();
   const importInputRef = useRef(null);
   const { auth, logout, isPremium, subscriptionPlan } = useAuth();
@@ -216,7 +225,20 @@ function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRa
     ? Number(convertFromTRY(prefs.savingsGoal, displayCurrency, liveRates).toFixed(displayCurrency === '₺' ? 0 : 2))
     : '';
   const accountProviderLabel = auth?.googleId ? 'Google hesabı' : 'E-posta hesabı';
-  const accountSyncLabel = cloudSyncEnabled ? 'Bulut senkron aktif' : 'Yalnızca bu cihaz';
+  const accountSyncLabel = !cloudSyncEnabled
+    ? t('common.offline')
+    : syncStatus === 'error'
+      ? t('common.syncError')
+      : syncStatus === 'syncing'
+        ? t('common.syncing')
+        : t('common.syncOk');
+  const syncBadgeClass = !cloudSyncEnabled
+    ? (isDark ? 'bg-white/8 text-white/55' : 'bg-slate-100 text-slate-500')
+    : syncStatus === 'error'
+      ? 'bg-rose-500/15 text-rose-400'
+      : syncStatus === 'syncing'
+        ? 'bg-blue-500/15 text-blue-400'
+        : 'bg-emerald-500/15 text-emerald-400';
 
   const txt = isDark ? 'text-white' : 'text-slate-900';
   const cardBg = isDark ? 'bg-slate-900/48 border-white/10 shadow-pack-card backdrop-blur-xl' : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]';
@@ -335,8 +357,8 @@ function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRa
       <PageShell width="wide">
         <PageHeader
           isDark={isDark}
-          title="Ayarlar"
-          description="Tercihler ve veri yönetimi"
+          title={t('settings.title')}
+          description={t('settings.description')}
           className="mb-10"
           titleClassName={`font-display text-step-4 sm:text-6xl mb-1 ${txt}`}
           descriptionClassName={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-white/38' : 'text-black/38'}`}
@@ -363,7 +385,8 @@ function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRa
               </span>
               <span
                 data-testid="settings-sync-status"
-                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${cloudSyncEnabled ? 'bg-emerald-500/15 text-emerald-400' : isDark ? 'bg-white/8 text-white/55' : 'bg-slate-100 text-slate-500'}`}
+                title={syncStatus === 'error' && lastSyncError ? lastSyncError : undefined}
+                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${syncBadgeClass}`}
               >
                 {accountSyncLabel}
               </span>
@@ -377,8 +400,32 @@ function Settings({ isDark, color, prefs, savePrefs, cats = [], saveCats, liveRa
           </div>
           <button onClick={handleLogout}
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition-all text-sm font-black">
-            <LogOut size={14}/> Çıkış
+            <LogOut size={14}/> {t('settings.logout')}
           </button>
+        </div>
+
+        {/* Language selector */}
+        <div className="mt-5 pt-5 border-t border-white/10">
+          <p className={`text-[10px] font-black uppercase tracking-widest mb-3 opacity-40 ${txt}`}>
+            Language / Dil
+          </p>
+          <div className="flex gap-2">
+            {SUPPORTED_LANGUAGES.map(lang => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                aria-pressed={currentLang === lang.code}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black border transition-all ${
+                  currentLang === lang.code
+                    ? `${color.bg} text-white border-transparent`
+                    : isDark ? 'border-white/10 text-white/50 hover:text-white' : 'border-slate-200 text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span>{lang.flag}</span>
+                <span>{lang.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
         </SectionCard>
 

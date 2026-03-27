@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
@@ -23,6 +23,11 @@
         root.classList.toggle('dark', isDark);
         root.style.backgroundColor = isDark ? '#06060a' : '#f2f1ed';
         root.style.colorScheme     = isDark ? 'dark'    : 'light';
+        // Language & direction
+        var lang = localStorage.getItem('payonar_language') || navigator.language?.split('-')[0] || 'en';
+        if (!['tr','en'].includes(lang)) lang = 'en';
+        root.lang = lang;
+        root.dir  = lang === 'ar' ? 'rtl' : 'ltr';
       })();
     </script>
   </head>

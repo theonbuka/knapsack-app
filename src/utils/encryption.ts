@@ -22,20 +22,36 @@ function resolveSecretKey(): string {
     return envKey;
   }
 
+  // SSR / non-browser context: ephemeral key, not persisted anywhere.
   if (typeof window === 'undefined') {
-    return 'knapsack_runtime_fallback_key';
+    return generateLocalSecretKey();
   }
 
   try {
-    const existing = window.localStorage.getItem(LOCAL_SECRET_KEY_NAME);
-    if (existing && existing.length >= 32) {
-      return existing;
+    // Prefer sessionStorage: cleared when the browser session ends and
+    // is not persisted to disk the same way localStorage is.
+    const sessionKey = window.sessionStorage.getItem(LOCAL_SECRET_KEY_NAME);
+    if (sessionKey && sessionKey.length >= 32) {
+      return sessionKey;
     }
 
+    // One-time migration: carry an existing localStorage key into
+    // sessionStorage, then remove it from localStorage.
+    const localKey = window.localStorage.getItem(LOCAL_SECRET_KEY_NAME);
+    if (localKey && localKey.length >= 32) {
+      window.sessionStorage.setItem(LOCAL_SECRET_KEY_NAME, localKey);
+      window.localStorage.removeItem(LOCAL_SECRET_KEY_NAME);
+      return localKey;
+    }
+
+    // No prior key found — generate a fresh one for this session.
     const generated = generateLocalSecretKey();
-    window.localStorage.setItem(LOCAL_SECRET_KEY_NAME, generated);
+    window.sessionStorage.setItem(LOCAL_SECRET_KEY_NAME, generated);
     return generated;
   } catch {
+    // Storage unavailable (e.g. private mode with strict settings):
+    // return an in-memory ephemeral key — data won't survive a reload
+    // but at least the current session works.
     return generateLocalSecretKey();
   }
 }

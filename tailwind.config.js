@@ -59,16 +59,42 @@ export default {
         },
       },
       borderRadius: {
+        // Legacy
         bento: '1.5rem',
         ui: '0.75rem',
+        // Semantic tokens
+        card: '2rem',       // main cards and modals
+        dock: '1.85rem',    // floating nav dock
+        fab: '1.5rem',      // floating action button
+        sheet: '1.75rem',   // bottom sheets
+        pill: '9999px',     // pill badges/buttons
+        tag: '0.5rem',      // small tags and chips
+        btn: '0.75rem',     // standard buttons and inputs
+        'btn-lg': '1rem',   // larger buttons
+        widget: '1.25rem',  // widget cards, smaller panels
       },
       backgroundImage: {
         'pack-grid': 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)',
         'pack-noise': 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%)',
       },
       boxShadow: {
+        // Legacy
         'pack-glow': '0 0 30px rgba(99,102,241,0.15)',
         'pack-card': '0 24px 80px rgba(2,6,23,0.36)',
+        // Semantic tokens
+        'card-dark': '0 24px 80px rgba(2,6,23,0.36), inset 0 1px 0 rgba(255,255,255,0.06)',
+        'card-light': '0 8px 32px rgba(0,0,0,0.05), 0 1px 0 rgba(0,0,0,0.03)',
+        'modal-dark': '0 40px 120px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.07)',
+        'modal-light': '0 20px 60px rgba(0,0,0,0.12)',
+        'fab-dark': '0 18px 48px rgba(99,102,241,0.32), 0 0 0 1px rgba(255,255,255,0.06)',
+        'fab-light': '0 8px 30px rgba(0,0,0,0.08)',
+        'dock-dark': '0 28px 80px rgba(2,6,23,0.34)',
+        'dock-light': '0 8px 32px rgba(0,0,0,0.06)',
+        'btn-primary': '0 10px 28px rgba(99,102,241,0.28)',
+        'btn-primary-hover': '0 14px 36px rgba(99,102,241,0.38)',
+        'inner-highlight': 'inset 0 1px 0 rgba(255,255,255,0.08)',
+        'glow-indigo': '0 0 30px rgba(99,102,241,0.18)',
+        'glow-emerald': '0 0 30px rgba(16,185,129,0.18)',
       },
       keyframes: {
         shimmer: {

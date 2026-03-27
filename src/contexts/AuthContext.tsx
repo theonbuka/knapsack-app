@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { SupabaseClient, Session } from '@supabase/supabase-js';
 import type { AuthState, SubscriptionPlan } from '../types';
 import { Encryption } from '../utils/encryption';
 import { RegisterSchema, LoginSchema, PasswordSchema, RequiredEmailSchema, validateAndSanitize } from '../utils/validation';
@@ -66,6 +66,7 @@ interface AuthContextType {
     email: string,
     password: string
   ) => Promise<RegisterResult>;
+  processSupabaseSession: (session: Session | null, supabase?: SupabaseClient | null) => Promise<boolean>;
   isAuthenticated: boolean;
   canUseGoogleRedirect: boolean;
   subscriptionPlan: SubscriptionPlan;
@@ -411,8 +412,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     }
 
-    await openAuthUrl('/api/auth/google/start');
+    // Web: use Supabase OAuth directly — no server-side endpoint needed.
+    const { data, error: signInError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
 
+    if (signInError || !data?.url) {
+      return {
+        success: false,
+        message: signInError
+          ? `Google girisi baslatilamadi: ${signInError.message}`
+          : 'Google yonlendirme adresi uretilemedi.',
+        reason: 'start-failed',
+      };
+    }
+
+    await openAuthUrl(data.url);
     return { success: true };
   }, []);
 
@@ -510,13 +529,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated) return;
 
     const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+    // Throttle: reset the countdown at most once every 2 seconds so that
+    // high-frequency events (mousemove, scroll) don't hammer setTimeout/clearTimeout.
+    const ACTIVITY_THROTTLE_MS = 2000;
+
     let timeoutId: ReturnType<typeof setTimeout>;
+    let lastActivityAt = 0;
 
     const resetTimer = () => {
+      const now = Date.now();
+      if (now - lastActivityAt < ACTIVITY_THROTTLE_MS) return;
+      lastActivityAt = now;
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        logout();
-      }, SESSION_TIMEOUT);
+      timeoutId = setTimeout(logout, SESSION_TIMEOUT);
     };
 
     // Reset timer on user activity
@@ -847,6 +872,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatePassword,
       logout,
       register,
+      processSupabaseSession,
       isAuthenticated,
       canUseGoogleRedirect,
       subscriptionPlan,

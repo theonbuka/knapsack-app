@@ -100,9 +100,19 @@ function resolveSupabaseUrl(
 ): string {
   const currentHostname = currentOrigin ? new URL(currentOrigin).hostname : '';
 
-  // In production-like web environments, lock to the known Supabase project.
-  // This prevents deploy-time env drift to another valid-but-wrong project URL.
   if (!isNativeAuthPlatform() && currentHostname && !isLoopbackHostname(currentHostname)) {
+    // Non-localhost web: prefer the explicitly configured env URL if it points
+    // to a non-loopback host (covers self-hosted Supabase on the same domain).
+    if (rawUrl) {
+      try {
+        const parsed = new URL(rawUrl);
+        if (parsed.protocol.startsWith('http') && !isLoopbackHostname(parsed.hostname)) {
+          return parsed.toString();
+        }
+      } catch {
+        // fall through to production fallback
+      }
+    }
     return PRODUCTION_SUPABASE_URL;
   }
 
@@ -138,10 +148,11 @@ export function resolveSupabaseAuthRedirectUrl(
     return `${currentOrigin}${path}`;
   }
 
-  // In production-like environments, always use the known whitelisted URL.
-  // This avoids any stale/misconfigured env redirect values that may cause
-  // Supabase "requested path is invalid" errors.
-  void envRedirectTo;
+  // Use the explicitly configured redirect URL if provided, otherwise fall
+  // back to the known production URL.
+  if (envRedirectTo) {
+    return envRedirectTo;
+  }
   return PRODUCTION_WEB_REDIRECT;
 }
 
@@ -159,6 +170,10 @@ export function getSupabaseAuthClient(): SupabaseClient | null {
     }
   } catch {
     return null;
+  }
+
+  if (cachedAuthClient && (cachedAuthClient as unknown as { supabaseUrl?: string }).supabaseUrl !== resolvedSupabaseUrl) {
+    cachedAuthClient = null;
   }
 
   if (!cachedAuthClient) {

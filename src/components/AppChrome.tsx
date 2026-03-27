@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion, type AnimationControls } from 'framer-motion';
 import { Moon, Plus, Sun } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface AccentColor {
   bg: string;
@@ -72,6 +73,7 @@ export function AppFloatingActionButton({
   isExpanded,
   onPress,
 }: AppFloatingActionButtonProps) {
+  const { t } = useTranslation();
   const focusRingCls = isDark
     ? 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 focus-visible:ring-offset-2 focus-visible:ring-offset-[#06060a]'
     : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
@@ -82,7 +84,7 @@ export function AppFloatingActionButton({
       onClick={onPress}
       className={`fixed bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] left-1/2 z-[250] flex h-[60px] w-[60px] -translate-x-1/2 items-center justify-center rounded-[1.5rem] border active:scale-90 transition-transform backdrop-blur-xl ${focusRingCls} ${isDark ? 'border-white/[0.10] bg-slate-900/84 text-white' : 'border-slate-200 bg-white/90 text-indigo-600'}`}
       style={{ boxShadow: isDark ? `0 18px 42px ${activeColor.hex}4d, 0 0 0 1px rgba(255,255,255,0.06)` : '0 8px 30px rgb(0 0 0 / 0.06)' }}
-      aria-label={isExpensesRoute ? 'Yeni sabit gider ekle' : 'Yeni işlem ekle'}
+      aria-label={isExpensesRoute ? t('nav.addFixedExpense') : t('nav.addTransaction')}
       aria-expanded={isExpensesRoute ? false : isExpanded}
     >
       <div className={`pointer-events-none absolute inset-0 rounded-[1.5rem] bg-gradient-to-br ${isDark ? 'from-white/[0.12] via-transparent to-transparent' : 'from-white via-transparent to-transparent'}`} />
@@ -116,6 +118,7 @@ export function AppNavigationDock({
   themeToggleControls,
   toolbarPlate,
 }: AppNavigationDockProps) {
+  const { t } = useTranslation();
   const focusRingCls = isDark
     ? 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 focus-visible:ring-offset-2 focus-visible:ring-offset-[#06060a]'
     : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
@@ -195,7 +198,7 @@ export function AppNavigationDock({
               onClick={onToggleTheme}
               animate={themeToggleControls}
               className={`relative ml-0.5 flex h-10 w-10 items-center justify-center rounded-[1rem] border transition-colors sm:h-11 sm:w-11 ${focusRingCls} ${isDark ? 'border-white/[0.08] bg-white/[0.04] text-white/65 hover:text-white' : 'border-slate-200 bg-white/90 text-slate-600 hover:text-slate-950'}`}
-              aria-label={isDark ? 'Açık temaya geç' : 'Koyu temaya geç'}
+              aria-label={isDark ? t('nav.lightTheme') : t('nav.darkTheme')}
               aria-pressed={!isDark}
             >
               <motion.span

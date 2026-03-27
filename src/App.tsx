@@ -1,5 +1,6 @@
 import React, { useState, useLayoutEffect, useEffect, lazy, Suspense, useMemo, useRef, useCallback } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence, useAnimationControls } from 'framer-motion';
 import {
   Home as HomeIcon, List, CreditCard, Receipt, Settings as SettingsIcon,
@@ -12,6 +13,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthGuard } from './components/AuthGuard';
 import { QuickAddSheet } from './components/QuickAddSheet';
 import { useAuth } from './contexts/AuthContext';
+import { useTheme } from './contexts/ThemeContext';
 
 // Lazy load pages for code splitting
 const Home = lazy(() => import('./pages/Home'));
@@ -21,10 +23,7 @@ const Landing = lazy(() => import('./pages/Landing'));
 const Expenses = lazy(() => import('./pages/Expenses'));
 const Settings = lazy(() => import('./pages/Settings'));
 
-const DARK_APP_BG = '#0F172A';
-const LIGHT_APP_BG = '#F8FAFC';
 const CANONICAL_WEB_ORIGIN = 'https://payonar.com';
-const LIGHT_THEME_MIGRATION_KEY = 'knapsack_theme_premium_light_v1';
 const MAINTENANCE_MODE = import.meta.env.VITE_MAINTENANCE_MODE?.trim() === 'true';
 const MAINTENANCE_BYPASS_KEY = import.meta.env.VITE_MAINTENANCE_BYPASS_KEY?.trim() || '';
 const MAINTENANCE_BYPASS_STORAGE_KEY = 'payonar_maintenance_bypass';
@@ -43,6 +42,7 @@ function shouldForceCanonicalOrigin(hostname: string): boolean {
 }
 
 function MaintenancePage() {
+  const { t } = useTranslation();
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 text-slate-100">
       <div className="pointer-events-none absolute inset-0">
@@ -51,13 +51,13 @@ function MaintenancePage() {
       </div>
 
       <div className="relative z-10 mx-4 w-full max-w-2xl rounded-[2rem] border border-white/10 bg-slate-900/70 p-8 text-center shadow-[0_30px_90px_rgba(2,6,23,0.65)] backdrop-blur-xl sm:p-12">
-        <p className="text-[11px] font-black uppercase tracking-[0.35em] text-emerald-300/80">Payonar</p>
-        <h1 className={`mt-4 text-4xl font-black tracking-[-0.03em] text-white sm:text-5xl`}>Yapımdayız</h1>
+        <p className="text-[11px] font-black uppercase tracking-[0.35em] text-emerald-300/80">{t('common.appName')}</p>
+        <h1 className={`mt-4 text-4xl font-black tracking-[-0.03em] text-white sm:text-5xl`}>{t('maintenance.title')}</h1>
         <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">
-          Daha stabil ve daha iyi bir deneyim için sistemi güncelliyoruz. Kısa süre içinde tekrar yayında olacağız.
+          {t('maintenance.message')}
         </p>
         <div className="mt-8 inline-flex items-center rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-emerald-200">
-          Geçici Bakım Modu
+          {t('maintenance.badge')}
         </div>
       </div>
     </div>
@@ -78,8 +78,10 @@ function createQuickAddForm(defaultCurrency = '₺', defaultCategoryId = 'c1') {
 }
 
 function getTodayInputValue(date = new Date()) {
-  const shifted = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-  return shifted.toISOString().slice(0, 10);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 /* ─── App Shell ───────────────────────────────────────────── */
@@ -91,28 +93,20 @@ function App() {
     addWallet, updateWallet, removeWallet,
     addExpense, removeExpense, toggleExpensePaid, updateExpense,
     savePrefs, saveCats, refresh, loading,
+    syncStatus, lastSyncError,
   } = useFinance();
 
-  const [isDark, setIsDark] = useState(() => {
-    const migrated = localStorage.getItem(LIGHT_THEME_MIGRATION_KEY);
-    const storedTheme = localStorage.getItem('knapsack_theme');
-
-    if (!migrated) {
-      localStorage.setItem(LIGHT_THEME_MIGRATION_KEY, 'true');
-      localStorage.setItem('knapsack_theme', 'false');
-      return false;
-    }
-
-    return storedTheme !== null ? JSON.parse(storedTheme) : false;
-  });
+  const { isDark, toggleTheme } = useTheme();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [quickAddError, setQuickAddError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [expenseFabTrigger, setExpenseFabTrigger] = useState(0);
   const dockRef = useRef<HTMLDivElement>(null);
   const navButtonRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   const [indicatorFrame, setIndicatorFrame] = useState({ x: 0, y: 0, width: 0, height: 0, visible: false });
   const themeToggleControls = useAnimationControls();
 
+  const { t } = useTranslation();
   const activeColor = themeColors[data.prefs?.themeColor] || themeColors.indigo;
   const cats = data.cats || [];
   const defaultTransactionCurrency = getPreferredInputCurrency(data.prefs?.currency);
@@ -125,13 +119,13 @@ function App() {
   const isExpensesRoute = loc.pathname === '/fixed-expenses';
   const navItems = useMemo(() => {
     return [
-      { to: '/', icon: <HomeIcon size={18} strokeWidth={1.5} />, label: 'Ana Sayfa' },
-      { to: '/daily-expenses', icon: <List size={18} strokeWidth={1.5} />, label: 'Günlük Harcamalar' },
-      { to: '/credit-cards', icon: <CreditCard size={18} strokeWidth={1.5} />, label: 'Finans Hesapları' },
-      { to: '/fixed-expenses', icon: <Receipt size={18} strokeWidth={1.5} />, label: 'Sabit Giderler' },
-      { to: '/settings', icon: <SettingsIcon size={18} strokeWidth={1.5} />, label: 'Ayarlar' },
+      { to: '/', icon: <HomeIcon size={18} strokeWidth={1.5} />, label: t('nav.home') },
+      { to: '/daily-expenses', icon: <List size={18} strokeWidth={1.5} />, label: t('nav.dailyExpenses') },
+      { to: '/credit-cards', icon: <CreditCard size={18} strokeWidth={1.5} />, label: t('nav.accounts') },
+      { to: '/fixed-expenses', icon: <Receipt size={18} strokeWidth={1.5} />, label: t('nav.fixedExpenses') },
+      { to: '/settings', icon: <SettingsIcon size={18} strokeWidth={1.5} />, label: t('nav.settings') },
     ];
-  }, []);
+  }, [t]);
   const activeNavIndex = useMemo(
     () => navItems.findIndex(item => item.to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(item.to)),
     [loc.pathname, navItems],
@@ -142,15 +136,6 @@ function App() {
     setQuickAddError('');
     setForm(createQuickAddForm(defaultTransactionCurrency, defaultCategoryId));
   }, [defaultCategoryId, defaultTransactionCurrency]);
-
-  useLayoutEffect(() => {
-    const root = document.documentElement;
-    const bg = isDark ? DARK_APP_BG : LIGHT_APP_BG;
-    root.style.backgroundColor = bg;
-    root.style.colorScheme = isDark ? 'dark' : 'light';
-    document.body.style.backgroundColor = bg;
-    root.classList.toggle('dark', isDark);
-  }, [isDark]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -201,7 +186,7 @@ function App() {
     };
   }, [updateIndicator]);
 
-  const toggleTheme = () => {
+  const handleToggleTheme = () => {
     void themeToggleControls.start({
       scale: [1, 1.25, 0.93, 1.06, 1],
       y: [0, -3, 0],
@@ -211,21 +196,18 @@ function App() {
         ease: 'easeOut',
       },
     });
-
-    setIsDark(prev => {
-      const next = !prev;
-      localStorage.setItem('knapsack_theme', JSON.stringify(next));
-      return next;
-    });
+    toggleTheme();
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!form.amount) {
-      setQuickAddError('Lütfen tutar giriniz.');
+      setQuickAddError(t('quickAdd.amountRequired'));
       return;
     }
 
+    setIsSubmitting(true);
     try {
       addTransaction({
         ...form,
@@ -238,7 +220,9 @@ function App() {
       setForm(createQuickAddForm(defaultTransactionCurrency, defaultCategoryId));
       setIsModalOpen(false);
     } catch (err) {
-      setQuickAddError(err instanceof Error ? err.message : 'İşlem kaydedilemedi.');
+      setQuickAddError(err instanceof Error ? err.message : t('quickAdd.saveFailed'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -328,7 +312,7 @@ function App() {
               <Route path="/calendar" element={<Navigate to="/" replace />} />
               <Route path="/analytics" element={<Navigate to="/" replace />} />
               <Route path="/premium" element={<Navigate to="/" replace />} />
-              <Route path="/settings" element={<AuthGuard><Settings isDark={isDark} color={activeColor} prefs={data.prefs} savePrefs={savePrefs} cats={cats} saveCats={saveCats} liveRates={liveRates} transactions={data.trans} expenses={data.expenses} /></AuthGuard>} />
+              <Route path="/settings" element={<AuthGuard><Settings isDark={isDark} color={activeColor} prefs={data.prefs} savePrefs={savePrefs} cats={cats} saveCats={saveCats} liveRates={liveRates} transactions={data.trans} expenses={data.expenses} syncStatus={syncStatus} lastSyncError={lastSyncError} /></AuthGuard>} />
               <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/landing'} replace />} />
             </Routes>
           </Suspense>
@@ -351,7 +335,7 @@ function App() {
         isDark={isDark}
         navButtonRefs={navButtonRefs}
         navItems={navItems}
-        onToggleTheme={toggleTheme}
+        onToggleTheme={handleToggleTheme}
         themeToggleControls={themeToggleControls}
         toolbarPlate={toolbarPlate}
       />
@@ -369,6 +353,7 @@ function App() {
             submitError={quickAddError}
             onClearError={() => setQuickAddError('')}
             fixedCurrencyLabel={defaultTransactionCurrency}
+            isSubmitting={isSubmitting}
           />
         )}
       </AnimatePresence>

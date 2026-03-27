@@ -4,6 +4,7 @@ import { getActiveCloudSyncAccountId, getAnonymousScopedDataKey } from '../utils
 import type { Category, ExpenseItem, Transaction, UserPrefs, Wallet } from '../types';
 import { getSupabaseAuthClient } from '../utils/supabaseAuth';
 import { SecureStorage } from '../utils/secureStorage';
+import { fetchLiveRates } from '../utils/currency';
 
 const FALLBACK_RATES = { USD: 33.2, EUR: 35.9, GOLD: 3185 };
 const DEFAULT_PREFS: UserPrefs = { currency: '₺', themeColor: 'indigo', savingsGoal: 0 };
@@ -396,7 +397,10 @@ export function useFinance() {
           CLOUD_WRITE_RETRY_COUNT,
           CLOUD_WRITE_RETRY_DELAY_MS,
         ).catch(err => {
+          const message = err instanceof Error ? err.message : 'Yerel kayitlar buluta yuklenemedi';
           console.error('Cloud backfill of local-only records failed:', err);
+          setLastSyncError(`bulut-yedekleme: ${message}`);
+          setSyncStatus('error');
         });
       }
     } catch (err) {
@@ -419,14 +423,11 @@ export function useFinance() {
   }, [syncFromRemote]);
 
   useEffect(() => {
-    fetch('https://open.er-api.com/v6/latest/TRY')
-      .then(r => r.json())
-      .then(api => {
-        if (api.rates) {
-          const updated = { ...ratesRef.current, USD: 1 / api.rates.USD, EUR: 1 / api.rates.EUR };
-          ratesRef.current = updated;
-          setLiveRates(updated);
-        }
+    fetchLiveRates()
+      .then(rates => {
+        const updated = { ...ratesRef.current, USD: rates.USD, EUR: rates.EUR };
+        ratesRef.current = updated;
+        setLiveRates(updated);
       })
       .catch(() => {});
   }, []);

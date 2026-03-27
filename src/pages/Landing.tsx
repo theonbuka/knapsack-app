@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles, Wallet } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { getSupabaseAuthClient, readAuthCallbackParams } from '../utils/supabaseAuth';
@@ -11,7 +12,8 @@ const inputClassName = 'w-full rounded-2xl border border-slate-200 bg-white px-4
 type AuthMode = 'login' | 'register';
 
 export default function Landing() {
-  usePageMeta('Giriş', 'Payonar hesabına giriş veya yeni hesap oluşturma ekranı.');
+  const { t } = useTranslation();
+  usePageMeta(t('landing.login'), 'Payonar hesabına giriş veya yeni hesap oluşturma ekranı.');
 
   const navigate = useNavigate();
   const {
@@ -68,7 +70,7 @@ export default function Landing() {
 
     const supabase = getSupabaseAuthClient();
     if (!supabase) {
-      setLocalError('Auth bağlantısı kurulamadı. Sayfayı yenileyip tekrar dene.');
+      setLocalError(t('landing.errors.authConnectError'));
       return;
     }
 
@@ -104,11 +106,11 @@ export default function Landing() {
           setMode('login');
           setPassword('');
           setConfirmPassword('');
-          setInfoMessage('Yeni şifreni belirleyebilirsin.');
+          setInfoMessage(t('landing.info.newPasswordHint'));
           return;
         }
 
-        setInfoMessage('Email doğrulandı. Giriş tamamlanıyor...');
+        setInfoMessage(t('landing.info.emailVerified'));
         return;
       }
 
@@ -141,7 +143,7 @@ export default function Landing() {
       })
       .catch((err) => {
         console.error('Auth callback exception:', err);
-        setLocalError('Email doğrulama veya giriş callback işlemi başarısız oldu. Linki tekrar açmayı dene.');
+        setLocalError(t('landing.errors.callbackFailed'));
         setIsGoogleLoading(false);
       });
   }, []);
@@ -168,12 +170,12 @@ export default function Landing() {
       if (result.requiresVerification) {
         setMode('login');
         setPassword('');
-        setInfoMessage(result.message || 'Aktivasyon maili gönderildi. Mail kutunu kontrol et.');
+        setInfoMessage(result.message || t('landing.info.verificationSent'));
         return;
       }
 
       if (!authError) {
-        setLocalError(result.message || 'Kayıt işlemi başarısız.');
+        setLocalError(result.message || t('landing.errors.registerFailed'));
       }
       return;
     }
@@ -185,7 +187,7 @@ export default function Landing() {
     }
 
     if (!authError) {
-      setLocalError('Giriş başarısız. Bilgileri kontrol et.');
+      setLocalError(t('landing.errors.loginFailed'));
     }
   };
 
@@ -196,18 +198,18 @@ export default function Landing() {
 
     try {
       if (isAuthenticated) {
-        setLocalError('Zaten giriş yapmışsınız.');
+        setLocalError(t('landing.errors.alreadyLoggedIn'));
         return;
       }
 
       if (!canUseGoogleRedirect) {
-        setLocalError('Google girişi için Supabase ayarları eksik.');
+        setLocalError(t('landing.errors.googleNotConfigured'));
         return;
       }
 
       const result = await loginWithGoogleRedirect();
       if (!result.success) {
-        setLocalError(result.message || 'Google girişi başlatılamadı.');
+        setLocalError(result.message || t('landing.errors.googleFailed'));
       }
     } finally {
       setIsGoogleLoading(false);
@@ -220,12 +222,12 @@ export default function Landing() {
 
     const result = await requestPasswordReset(email);
     if (result.success) {
-      setInfoMessage(result.message || 'Şifre sıfırlama bağlantısı gönderildi.');
+      setInfoMessage(result.message || t('landing.info.resetSent'));
       return;
     }
 
     if (!authError) {
-      setLocalError(result.message || 'Şifre sıfırlama işlemi başarısız.');
+      setLocalError(result.message || t('landing.errors.resetFailed'));
     }
   };
 
@@ -235,7 +237,7 @@ export default function Landing() {
     setInfoMessage('');
 
     if (password !== confirmPassword) {
-      setLocalError('Şifreler eşleşmiyor.');
+      setLocalError(t('landing.errors.passwordMismatch'));
       return;
     }
 
@@ -244,7 +246,7 @@ export default function Landing() {
       const result = await updatePassword(password);
       if (!result.success) {
         if (!authError) {
-          setLocalError(result.message || 'Şifre güncellenemedi.');
+          setLocalError(result.message || t('landing.errors.passwordUpdateFailed'));
         }
         return;
       }
@@ -252,7 +254,7 @@ export default function Landing() {
       setIsRecoveryMode(false);
       setPassword('');
       setConfirmPassword('');
-      setInfoMessage(result.message || 'Şifre güncellendi. Giriş yapabilirsin.');
+      setInfoMessage(result.message || t('landing.info.passwordUpdated'));
     } finally {
       setIsRecoveryLoading(false);
     }
@@ -267,26 +269,26 @@ export default function Landing() {
           </div>
 
           <div className="space-y-4">
-            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Finansını tek yerde yönet.</h1>
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{t('landing.headline')}</h1>
             <p className="max-w-xl text-base leading-7 text-slate-600">
-              Güvenli giriş, sade takip ve hızlı işlem akışıyla tüm gelir-gider verini tek panelde toplar.
+              {t('landing.subheadline')}
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <article className="rounded-3xl border border-slate-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Güvenlik</p>
-              <p className="mt-3 text-sm leading-6 text-slate-600">Kullanıcı verileri hesap bazlı izole edilir ve şifreli saklanır.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{t('landing.securityTitle')}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{t('landing.securityDesc')}</p>
             </article>
             <article className="rounded-3xl border border-slate-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Google Giriş</p>
-              <p className="mt-3 text-sm leading-6 text-slate-600">Hızlı yönlendirme ile Google hesabınla giriş yapabilirsin.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{t('landing.googleLoginTitle')}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{t('landing.googleLoginDesc')}</p>
             </article>
           </div>
 
           <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-xs text-slate-600">
             <ShieldCheck size={16} className="text-emerald-600" />
-            Giriş yapmadan dashboard ve finans modülleri görüntülenemez.
+            {t('landing.authGuard')}
           </div>
         </section>
 
@@ -297,8 +299,8 @@ export default function Landing() {
         >
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Hesap</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight">{mode === 'login' ? 'Hoş geldin' : 'Yeni hesap oluştur'}</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{t('landing.account')}</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight">{mode === 'login' ? t('landing.welcome') : t('landing.createAccount')}</h2>
             </div>
             <Sparkles size={18} className="text-slate-500" />
           </div>
@@ -315,7 +317,7 @@ export default function Landing() {
               }}
               className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${mode === 'login' ? 'bg-white text-slate-900' : 'text-slate-500'}`}
             >
-              Giriş
+              {t('landing.login')}
             </button>
             <button
               type="button"
@@ -328,21 +330,21 @@ export default function Landing() {
               }}
               className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${mode === 'register' ? 'bg-white text-slate-900' : 'text-slate-500'}`}
             >
-              Kayıt
+              {t('landing.register')}
             </button>
           </div>
 
           {isRecoveryMode ? (
             <form onSubmit={onUpdatePassword} className="space-y-4">
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-700">
-                Şifre sıfırlama bağlantısı doğrulandı. Hesabın için yeni bir şifre belirle.
+                {t('landing.recovery.title')}
               </div>
 
               <div className="relative">
                 <Lock size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   className={`${inputClassName} pl-11 pr-12`}
-                  placeholder="Yeni şifre"
+                  placeholder={t('landing.newPassword')}
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   value={password}
@@ -352,7 +354,7 @@ export default function Landing() {
                   type="button"
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"
                   onClick={() => setShowPassword(value => !value)}
-                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                  aria-label={showPassword ? t('landing.hidePassword') : t('landing.showPassword')}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -362,7 +364,7 @@ export default function Landing() {
                 <Lock size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   className={`${inputClassName} pl-11 pr-12`}
-                  placeholder="Yeni şifre tekrar"
+                  placeholder={t('landing.confirmPassword')}
                   type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   value={confirmPassword}
@@ -372,7 +374,7 @@ export default function Landing() {
                   type="button"
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"
                   onClick={() => setShowConfirmPassword(value => !value)}
-                  aria-label={showConfirmPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                  aria-label={showConfirmPassword ? t('landing.hidePassword') : t('landing.showPassword')}
                 >
                   {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -386,7 +388,7 @@ export default function Landing() {
                 disabled={isRecoveryLoading}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-500"
               >
-                {isRecoveryLoading ? 'Güncelleniyor' : 'Yeni şifreyi kaydet'}
+                {isRecoveryLoading ? t('landing.recovery.saving') : t('landing.recovery.savePassword')}
                 <ArrowRight size={16} />
               </button>
             </form>
@@ -394,8 +396,8 @@ export default function Landing() {
           <form onSubmit={onSubmit} className="space-y-4">
             {mode === 'register' ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                <input className={inputClassName} placeholder="İsim" value={name} onChange={event => setName(event.target.value)} autoComplete="given-name" />
-                <input className={inputClassName} placeholder="Soyisim" value={surname} onChange={event => setSurname(event.target.value)} autoComplete="family-name" />
+                <input className={inputClassName} placeholder={t('landing.firstName')} value={name} onChange={event => setName(event.target.value)} autoComplete="given-name" />
+                <input className={inputClassName} placeholder={t('landing.lastName')} value={surname} onChange={event => setSurname(event.target.value)} autoComplete="family-name" />
               </div>
             ) : null}
 
@@ -415,7 +417,7 @@ export default function Landing() {
               <Lock size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 className={`${inputClassName} pl-11 pr-12`}
-                  placeholder="Şifre"
+                  placeholder={t('landing.password')}
                   type={showPassword ? 'text' : 'password'}
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   value={password}
@@ -425,7 +427,7 @@ export default function Landing() {
                   type="button"
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"
                   onClick={() => setShowPassword(value => !value)}
-                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                  aria-label={showPassword ? t('landing.hidePassword') : t('landing.showPassword')}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -438,11 +440,11 @@ export default function Landing() {
                   onClick={() => {
                     setIsForgotPasswordMode(true);
                     setLocalError('');
-                    setInfoMessage('Email adresini gir, şifre sıfırlama bağlantısı gönderelim.');
+                    setInfoMessage(t('landing.forgotHint'));
                   }}
                   className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
                 >
-                  Şifremi unuttum
+                  {t('landing.forgotPassword')}
                 </button>
               </div>
             ) : null}
@@ -457,7 +459,7 @@ export default function Landing() {
                   onClick={onForgotPassword}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Sıfırlama maili gönder
+                  {t('landing.sendResetEmail')}
                   <ArrowRight size={16} />
                 </button>
                 <button
@@ -469,7 +471,7 @@ export default function Landing() {
                   }}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
                 >
-                  Vazgeç
+                  {t('common.cancel')}
                 </button>
               </div>
             ) : (
@@ -477,7 +479,7 @@ export default function Landing() {
                 type="submit"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                {mode === 'login' ? 'Giriş Yap' : 'Hesap Oluştur'}
+                {mode === 'login' ? t('landing.loginButton') : t('landing.registerButton')}
                 <ArrowRight size={16} />
               </button>
             )}
@@ -492,7 +494,7 @@ export default function Landing() {
             disabled={isGoogleLoading || !canUseGoogleRedirect}
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
           >
-            {isGoogleLoading ? 'Yönlendiriliyor' : 'Google ile giriş yap'}
+            {isGoogleLoading ? t('landing.googleLoading') : t('landing.googleLogin')}
           </button>
 
           <button
@@ -500,11 +502,11 @@ export default function Landing() {
             onClick={() => { loginAsDemo(); navigate('/'); }}
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 mt-3"
           >
-            Demo olarak dene
+            {t('landing.demoLogin')}
           </button>
 
           <p className="mt-4 text-center text-xs leading-5 text-slate-500">
-            E-posta/şifre veya Google ile giriş desteklenir.
+            {t('landing.authSupport')}
           </p>
         </motion.section>
       </div>

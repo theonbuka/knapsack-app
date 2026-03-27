@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpRight, ArrowDownLeft, Search, Trash2, Edit3, X, Check, Filter } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { MetricCard, PageHeader, PageShell, SectionCard } from '../components/UI';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { convertFromTRY, getPreferredInputCurrency, normalizeCurrencySymbol } from '../utils/currency';
 import { usePageMeta } from '../hooks/usePageMeta';
-
-const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 
 const stagger = {
   container: { hidden: {}, show: { transition: { staggerChildren: 0.04 } } },
@@ -13,6 +13,7 @@ const stagger = {
 };
 
 function EditModal({ tx, cats, isDark, color, wallets, defaultCurrency, onSave, onClose }) {
+  const { t } = useTranslation();
   const fallbackCategoryId = tx.categoryId || cats[0]?.id || 'c1';
   const [form, setForm] = useState({
     type: tx.type || 'expense',
@@ -42,16 +43,16 @@ function EditModal({ tx, cats, isDark, color, wallets, defaultCurrency, onSave, 
       >
         <div className="max-h-[86dvh] sm:max-h-[92vh] overflow-y-auto p-6 sm:p-8 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
           <div className="flex justify-between items-center mb-6">
-            <h2 className={`font-num text-2xl font-bold tracking-tighter ${txt}`}>İşlemi Düzenle</h2>
-            <button onClick={onClose} className={`p-2.5 rounded-2xl transition-colors ${isDark ? 'bg-slate-950/55 hover:bg-slate-950/75' : 'bg-slate-100 hover:bg-slate-200'}`}>
-              <X size={18} className={txt} />
+            <h2 className={`font-num text-2xl font-bold tracking-tighter ${txt}`}>{t('transactions.editTitle')}</h2>
+            <button onClick={onClose} aria-label={t('common.close')} className={`p-2.5 rounded-2xl transition-colors ${isDark ? 'bg-slate-950/55 hover:bg-slate-950/75' : 'bg-slate-100 hover:bg-slate-200'}`}>
+              <X size={18} className={txt} aria-hidden="true" />
             </button>
           </div>
           <div className="space-y-3.5">
             <div className={`flex gap-1.5 p-1.5 rounded-2xl ${isDark ? 'bg-slate-950/55' : 'bg-slate-100'}`}>
-              {[['expense', 'Gider'], ['income', 'Gelir']].map(([t, label]) => (
-                <button key={t} type="button" onClick={() => set('type', t)}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${form.type === t ? (t === 'income' ? 'bg-emerald-500 text-white shadow' : 'bg-rose-500 text-white shadow') : 'opacity-40 hover:opacity-70'}`}>
+              {[['expense', t('common.expense')], ['income', t('common.income')]].map(([type, label]) => (
+                <button key={type} type="button" onClick={() => set('type', type)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${form.type === type ? (type === 'income' ? 'bg-emerald-500 text-white shadow' : 'bg-rose-500 text-white shadow') : 'opacity-40 hover:opacity-70'}`}>
                   {label}
                 </button>
               ))}
@@ -71,9 +72,9 @@ function EditModal({ tx, cats, isDark, color, wallets, defaultCurrency, onSave, 
                 ))}
               </div>
             </div>
-            <input type="text" placeholder="Başlık" value={form.title} onChange={e => set('title', e.target.value)}
+            <input type="text" placeholder={t('common.title')} aria-label={t('common.title')} value={form.title} onChange={e => set('title', e.target.value)}
               className={`w-full px-4 py-3.5 rounded-2xl border text-sm font-medium outline-none transition-all ${inputCls}`} />
-            <input type="text" placeholder="Not (opsiyonel)" value={form.note} onChange={e => set('note', e.target.value)}
+            <input type="text" placeholder={`${t('common.note')} (${t('common.optional')})`} aria-label={t('common.note')} value={form.note} onChange={e => set('note', e.target.value)}
               className={`w-full px-4 py-3 rounded-2xl border text-sm outline-none opacity-70 focus:opacity-100 transition-all ${inputCls}`} />
             <div className="flex flex-wrap gap-1.5">
               {cats.map(cat => (
@@ -86,11 +87,11 @@ function EditModal({ tx, cats, isDark, color, wallets, defaultCurrency, onSave, 
             </div>
             {wallets.length > 0 && (
               <div>
-                <p className={`text-[10px] font-black uppercase tracking-widest mb-2 opacity-30 ${txt}`}>Ödeme Kaynağı</p>
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-2 opacity-30 ${txt}`}>{t('transactions.paymentSource')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   <button type="button" onClick={() => set('walletId', '')}
                     className={`px-2.5 py-1.5 rounded-xl text-xs font-black border transition-all ${!form.walletId ? `${color.bg} text-white border-transparent` : isDark ? 'border-white/10 text-white/40' : 'border-slate-200 text-slate-400'}`}>
-                    Belirtilmemiş
+                    {t('transactions.unspecified')}
                   </button>
                   {wallets.map((w, i) => (
                     <button key={i} type="button" onClick={() => set('walletId', w.name)}
@@ -104,8 +105,8 @@ function EditModal({ tx, cats, isDark, color, wallets, defaultCurrency, onSave, 
             <div className={`sticky bottom-0 pt-4 ${isDark ? 'bg-gradient-to-t from-slate-900 via-slate-900 to-transparent' : 'bg-gradient-to-t from-white via-white to-transparent'}`}>
               <button onClick={() => onSave(form)}
                 className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-white transition-opacity hover:opacity-90 ${color.bg}`}>
-                <Check size={15} className="inline mr-2" />
-                Kaydet
+                <Check size={15} className="inline mr-2" aria-hidden="true" />
+                {t('common.save')}
               </button>
             </div>
           </div>
@@ -116,7 +117,8 @@ function EditModal({ tx, cats, isDark, color, wallets, defaultCurrency, onSave, 
 }
 
 function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats = [], wallets = [], updateTransaction, removeTransaction }) {
-  usePageMeta('İşlemler', 'Tüm gelir ve gider kayıtlarını filtreleyip düzenleyin.');
+  const { t } = useTranslation();
+  usePageMeta(t('transactions.title'), 'Tüm gelir ve gider kayıtlarını filtreleyip düzenleyin.');
   const catMap = useMemo(() => Object.fromEntries(cats.map(c => [c.id, c])), [cats]);
   const cur = normalizeCurrencySymbol(prefs?.currency);
   const defaultCurrency = getPreferredInputCurrency(prefs?.currency);
@@ -125,29 +127,35 @@ function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats
   const [monthFilter, setMonth] = useState('all');
   const [yearFilter, setYear] = useState('all');
   const [editTx, setEditTx] = useState(null);
+  const [deleteTx, setDeleteTx] = useState<{ id: string; title: string } | null>(null);
 
   const years = useMemo(() =>
-    [...new Set(transactions.map(t => new Date(t.created).getFullYear()))].sort((a, b) => b - a),
+    [...new Set(transactions.map(tx => new Date(tx.created).getFullYear()))].sort((a, b) => b - a),
     [transactions]);
 
-  const filtered = useMemo(() => transactions.filter(t => {
-    if (filter === 'income' && t.type !== 'income') return false;
-    if (filter === 'expense' && t.type !== 'expense') return false;
-    if (search && !(t.title || '').toLowerCase().includes(search.toLowerCase())) return false;
-    if (monthFilter !== 'all' && new Date(t.created).getMonth() !== parseInt(monthFilter)) return false;
-    if (yearFilter !== 'all' && new Date(t.created).getFullYear() !== parseInt(yearFilter)) return false;
+  const filtered = useMemo(() => transactions.filter(tx => {
+    if (filter === 'income' && tx.type !== 'income') return false;
+    if (filter === 'expense' && tx.type !== 'expense') return false;
+    if (search && !(tx.title || '').toLowerCase().includes(search.toLowerCase())) return false;
+    if (monthFilter !== 'all' && new Date(tx.created).getMonth() !== parseInt(monthFilter)) return false;
+    if (yearFilter !== 'all' && new Date(tx.created).getFullYear() !== parseInt(yearFilter)) return false;
     return true;
   }), [transactions, filter, search, monthFilter, yearFilter]);
 
   const totals = useMemo(() => {
-    const income = filtered.filter(t => t.type === 'income').reduce((s, t) => s + parseFloat(t.amount || 0), 0);
-    const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const income = filtered.filter(tx => tx.type === 'income').reduce((s, tx) => s + parseFloat(tx.amount || 0), 0);
+    const expense = filtered.filter(tx => tx.type === 'expense').reduce((s, tx) => s + parseFloat(tx.amount || 0), 0);
     return { income, expense, net: income - expense };
   }, [filtered]);
 
   const handleSave = (form) => {
     if (updateTransaction) updateTransaction(editTx.id, form);
     setEditTx(null);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteTx) removeTransaction?.(deleteTx.id);
+    setDeleteTx(null);
   };
 
   const txt = isDark ? 'text-white' : 'text-slate-900';
@@ -166,8 +174,8 @@ function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats
       <PageShell width="wide">
         <PageHeader
           isDark={isDark}
-          title="İşlem Geçmişi"
-          description="Gelir ve gider kayıtları"
+          title={t('transactions.title')}
+          description={t('transactions.description')}
           className="mb-8"
           titleClassName={`font-display text-step-4 sm:text-6xl ${txt}`}
           descriptionClassName={`text-[10px] font-semibold uppercase tracking-widest ${sub}`}
@@ -181,9 +189,9 @@ function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats
             className="grid grid-cols-1 gap-3 sm:grid-cols-3"
           >
             {[
-              { label: 'Gelir', value: totals.income, cls: 'text-emerald-500' },
-              { label: 'Gider', value: totals.expense, cls: 'text-rose-500' },
-              { label: 'Net', value: totals.net, cls: totals.net >= 0 ? 'text-emerald-500' : 'text-rose-500' },
+              { label: t('common.income'), value: totals.income, cls: 'text-emerald-500' },
+              { label: t('common.expense'), value: totals.expense, cls: 'text-rose-500' },
+              { label: t('common.net'), value: totals.net, cls: totals.net >= 0 ? 'text-emerald-500' : 'text-rose-500' },
             ].map(({ label, value, cls }) => (
               <motion.div key={label} variants={stagger.item}>
                 <MetricCard
@@ -214,9 +222,10 @@ function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats
               <div className={`mb-4 flex items-center gap-3 rounded-2xl border px-4 py-3 ${inputCls}`}>
                 <Search size={15} className={`flex-shrink-0 ${sub}`} />
                 <input
-                  type="text" placeholder="İşlem ara..." value={search}
+                  type="text" placeholder={t('transactions.searchPlaceholder')} value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="bg-transparent outline-none text-sm font-medium w-full"
+                  aria-label={t('common.search')}
                 />
                 {search && (
                   <button onClick={() => setSearch('')} className={`flex-shrink-0 ${sub} hover:opacity-100`}>
@@ -229,21 +238,25 @@ function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats
                 <div className={`mr-1 flex flex-shrink-0 items-center gap-1 rounded-xl p-1 ${isDark ? 'bg-slate-950/55' : 'bg-slate-100'}`}>
                   <Filter size={12} className={sub} />
                 </div>
-                {[['all', 'Tümü'], ['income', 'Gelir'], ['expense', 'Gider']].map(([val, label]) => (
+                {[['all', t('common.all')], ['income', t('common.income')], ['expense', t('common.expense')]].map(([val, label]) => (
                   <button key={val} onClick={() => setFilter(val)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-widest border flex-shrink-0 transition-all ${filter === val ? `${color.bg} text-white border-transparent shadow-sm` : isDark ? 'border-white/10 text-white/40 hover:text-white/70' : 'border-slate-200 text-slate-400 hover:text-slate-600'}`}>
                     {label}
                   </button>
                 ))}
                 <select value={monthFilter} onChange={e => setMonth(e.target.value)}
-                  className={`px-3 py-2 rounded-xl text-xs font-black border outline-none cursor-pointer flex-shrink-0 ${selCls}`}>
-                  <option value="all">Tüm Aylar</option>
-                  {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                  className={`px-3 py-2 rounded-xl text-xs font-black border outline-none cursor-pointer flex-shrink-0 ${selCls}`}
+                  aria-label={t('transactions.allMonths')}>
+                  <option value="all">{t('transactions.allMonths')}</option>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i} value={i}>{t(`transactions.months.${i}`)}</option>
+                  ))}
                 </select>
                 {years.length > 0 && (
                   <select value={yearFilter} onChange={e => setYear(e.target.value)}
-                    className={`px-3 py-2 rounded-xl text-xs font-black border outline-none cursor-pointer flex-shrink-0 ${selCls}`}>
-                    <option value="all">Tüm Yıllar</option>
+                    className={`px-3 py-2 rounded-xl text-xs font-black border outline-none cursor-pointer flex-shrink-0 ${selCls}`}
+                    aria-label={t('transactions.allYears')}>
+                    <option value="all">{t('transactions.allYears')}</option>
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 )}
@@ -261,7 +274,7 @@ function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats
               {filtered.length === 0 ? (
                 <div className={`p-16 text-center rounded-[2.5rem] border border-dashed ${isDark ? 'border-white/10 bg-slate-900/28 opacity-80' : 'border-slate-200 bg-white/70 opacity-90'}`}>
                   <p className={`font-black uppercase tracking-widest text-xs ${txt}`}>
-                    {transactions.length === 0 ? 'Henüz işlem yok' : 'Sonuç bulunamadı'}
+                    {transactions.length === 0 ? t('transactions.noTransactions') : t('common.noResults')}
                   </p>
                 </div>
               ) : (
@@ -271,47 +284,49 @@ function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats
                   animate="show"
                   className="space-y-2.5"
                 >
-                  {filtered.map((t, idx) => {
-                    const cat = catMap[t.categoryId] || cats[0] || { name: 'Genel', emoji: '📌', color: '#6366f1' };
+                  {filtered.map((tx, idx) => {
+                    const cat = catMap[tx.categoryId] || cats[0] || { name: t('transactions.general'), emoji: '📌', color: '#6366f1' };
                     return (
                       <motion.div
-                        key={t.id || idx}
+                        key={tx.id || idx}
                         variants={stagger.item}
                         whileHover={{ scale: 1.005, transition: { duration: 0.15 } }}
                         className={`group flex items-center justify-between p-4 sm:p-5 rounded-[2rem] border transition-all ${nestedCardBg}`}
                       >
                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                          <div className={`p-2.5 rounded-2xl flex-shrink-0 ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                            {t.type === 'income' ? <ArrowUpRight size={18} /> : <ArrowDownLeft size={18} />}
+                          <div className={`p-2.5 rounded-2xl flex-shrink-0 ${tx.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                            {tx.type === 'income' ? <ArrowUpRight size={18} /> : <ArrowDownLeft size={18} />}
                           </div>
                           <div className="min-w-0">
-                            <h4 className={`font-bold text-sm truncate ${txt}`}>{t.title || cat.name}</h4>
+                            <h4 className={`font-bold text-sm truncate ${txt}`}>{tx.title || cat.name}</h4>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                               <span className="text-sm leading-none">{cat.emoji || '📌'}</span>
                               <span className="text-[9px] font-black uppercase tracking-wide" style={{ color: cat.color }}>{cat.name}</span>
-                              {t.walletId && <span className={`text-[9px] font-black ${sub}`}>· {t.walletId}</span>}
-                              <span className={`text-[9px] ${sub}`}>{t.created ? new Date(t.created).toLocaleDateString('tr-TR') : ''}</span>
+                              {tx.walletId && <span className={`text-[9px] font-black ${sub}`}>· {tx.walletId}</span>}
+                              <span className={`text-[9px] ${sub}`}>{tx.created ? new Date(tx.created).toLocaleDateString() : ''}</span>
                             </div>
-                            {t.note && <p className={`text-xs italic mt-0.5 truncate ${sub}`}>{t.note}</p>}
+                            {tx.note && <p className={`text-xs italic mt-0.5 truncate ${sub}`}>{tx.note}</p>}
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0 pl-2">
                           <div className="text-right">
-                            <p className={`font-num text-base sm:text-lg font-bold ${t.type === 'income' ? 'text-emerald-500' : txt}`}>
-                              {t.type === 'income' ? '+' : '-'}
+                            <p className={`font-num text-base sm:text-lg font-bold ${tx.type === 'income' ? 'text-emerald-500' : txt}`}>
+                              {tx.type === 'income' ? '+' : '-'}
                               {cur}
-                              {convertFromTRY(parseFloat(t.amount || 0), cur, liveRates).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                              {convertFromTRY(parseFloat(tx.amount || 0), cur, liveRates).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
                             </p>
-                            {t.currency && t.currency !== '₺' && <p className={`text-[9px] mt-0.5 ${sub}`}>{t.currency}</p>}
+                            {tx.currency && tx.currency !== '₺' && <p className={`text-[9px] mt-0.5 ${sub}`}>{tx.currency}</p>}
                           </div>
                           <div className="flex flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setEditTx(t)}
+                            <button onClick={() => setEditTx(tx)}
+                              aria-label={t('transactions.editAriaLabel')}
                               className={`p-1.5 rounded-xl transition-colors ${isDark ? 'text-white/40 hover:text-white hover:bg-white/5' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}>
-                              <Edit3 size={12} />
+                              <Edit3 size={12} aria-hidden="true" />
                             </button>
-                            <button onClick={() => removeTransaction?.(t.id)}
+                            <button onClick={() => setDeleteTx({ id: tx.id, title: tx.title || cat.name })}
+                              aria-label={t('transactions.deleteAriaLabel')}
                               className="p-1.5 rounded-xl text-rose-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors">
-                              <Trash2 size={12} />
+                              <Trash2 size={12} aria-hidden="true" />
                             </button>
                           </div>
                         </div>
@@ -333,6 +348,15 @@ function Transactions({ transactions = [], isDark, color, prefs, liveRates, cats
             />
           )}
         </AnimatePresence>
+
+        <ConfirmDialog
+          isOpen={!!deleteTx}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTx(null)}
+          title={t('transactions.deleteConfirmTitle')}
+          message={deleteTx ? t('transactions.deleteConfirmMessage', { title: deleteTx.title }) : ''}
+          isDark={isDark}
+        />
       </PageShell>
     </motion.div>
   );
